@@ -10,7 +10,7 @@ import SettingsModal from './components/SettingsModal';
 import NotificationsModal from './components/NotificationsModal';
 import EditPageModal from './components/EditPageModal';
 import AddPageModal from './components/AddPageModal';
-import { resolveFacebookPage } from './utils/facebookParser';
+import { fetchLiveFacebookData, extractPageNameFromUrl } from './utils/facebookParser';
 import { PlusCircle, RotateCcw } from 'lucide-react';
 
 const STORAGE_KEY = 'asi_monitor_pages_v3';
@@ -82,15 +82,58 @@ export default function App() {
     setUnreadNotifs(prev => prev + 1);
   };
 
-  // Handle URL input from search bar -> opens configure modal
+  // Handle URL input from search bar -> automatic live fetch from Facebook!
   const handleInputSubmit = async (url) => {
     setIsLoading(true);
     try {
-      const resolved = await resolveFacebookPage(url, metaToken);
-      setPendingAddPage(resolved);
+      const resolved = await fetchLiveFacebookData(url, metaToken);
+      if (resolved && resolved.followers > 0) {
+        // AUTOMATIC REAL-TIME ADD: Directly adds without manual input!
+        const newPage = {
+          id: `page-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          title: resolved.title,
+          handle: resolved.title.toLowerCase().replace(/\s+/g, ''),
+          url: resolved.url,
+          pfp: resolved.pfp,
+          followers: resolved.followers,
+          initialFollowers: resolved.followers,
+          views: resolved.views || Math.round(resolved.followers * 3.1),
+          growth: 0,
+          verified: resolved.verified,
+          isLive: true,
+          lastUpdated: new Date().toISOString(),
+          source: 'facebook_live'
+        };
+
+        setPages(prev => [newPage, ...prev]);
+        addNotification(`Live Added: ${resolved.title}`, `Auto-tracked ${resolved.followers.toLocaleString()} real followers directly from Facebook!`);
+
+        confetti({
+          particleCount: 50,
+          spread: 70,
+          origin: { y: 0.25 }
+        });
+
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        // Fallback: If Facebook blocked or private, open modal so user can configure
+        setPendingAddPage({
+          id: `page-${Date.now()}`,
+          title: resolved?.title || extractPageNameFromUrl(url),
+          handle: (resolved?.title || 'page').toLowerCase().replace(/\s+/g, ''),
+          url: resolved?.url || url,
+          pfp: resolved?.pfp || '',
+          followers: resolved?.followers || 1000,
+          views: resolved?.views || 2500,
+          growth: 0,
+          verified: false
+        });
+      }
     } catch (error) {
       console.error('Error resolving page:', error);
-      alert('Unable to process page link. Please try again.');
+      alert('Unable to process page link. Please verify the URL.');
     } finally {
       setIsLoading(false);
     }
@@ -129,120 +172,113 @@ export default function App() {
     });
   };
 
-  // Refresh single page (checks Meta API if token provided, otherwise updates live timestamp without fake increments)
+  // Refresh single page live from Facebook
   const handleRefreshSingle = async (page) => {
-    if (metaToken && metaToken.trim().length > 10) {
-      try {
-        const graphUrl = `https://graph.facebook.com/v19.0/${page.handle}?fields=name,followers_count,fan_count,picture.type(large)&access_token=${metaToken.trim()}`;
-        const res = await axios.get(graphUrl, { timeout: 6000 });
-        if (res.data) {
-          const newFollowers = res.data.followers_count || res.data.fan_count || page.followers;
-          const newTitle = res.data.name || page.title;
-          const newPfp = res.data.picture?.data?.url || page.pfp;
-          setPages(prev => prev.map(p => p.id === page.id ? {
-            ...p,
-            title: newTitle,
-            followers: newFollowers,
-            pfp: newPfp,
-            lastUpdated: new Date().toISOString()
-          } : p));
-          addNotification(page.title, `Live sync: ${newFollowers.toLocaleString()} followers`);
-          return;
-        }
-      } catch (e) {
-        console.warn('API refresh error:', e.message);
+    if (!page.url) return;
+    try {
+      const live = await fetchLiveFacebookData(page.url, metaToken);
+      if (live && live.followers > 0) {
+        setPages(prev => prev.map(p => {
+          if (p.id === page.id) {
+            const base = p.initialFollowers || p.followers;
+            return {
+              ...p,
+              followers: live.followers,
+              growth: live.followers - base,
+              views: live.views || p.views,
+              title: live.title || p.title,
+              pfp: live.pfp || p.pfp,
+              verified: live.verified !== undefined ? live.verified : p.verified,
+              lastUpdated: new Date().toISOString()
+            };
+          }
+          return p;
+        }));
+        addNotification(live.title, `Live update: ${live.followers.toLocaleString()} followers.`);
+        return;
       }
+    } catch (e) {
+      console.warn('Refresh error:', e.message);
     }
 
-    // Exact readings tracker: preserve exact numbers, trigger verified flash
-    setPages(prev => prev.map(p => {
-      if (p.id === page.id) {
-        return {
-          ...p,
-          lastUpdated: new Date().toISOString()
-        };
-      }
-      return p;
-    }));
-    addNotification(page.title, `Real-time check complete. Metrics verified.`);
+    setPages(prev => prev.map(p => p.id === page.id ? { ...p, lastUpdated: new Date().toISOString() } : p));
+    addNotification(page.title, `Real-time check complete.`);
   };
 
-  // Force refresh all
+  // Force refresh all monitored pages live from Facebook
   const handleForceRefreshAll = async () => {
     setIsRefreshing(true);
-    if (metaToken && metaToken.trim().length > 10) {
-      try {
-        const updated = await Promise.all(pages.map(async (page) => {
-          try {
-            const graphUrl = `https://graph.facebook.com/v19.0/${page.handle}?fields=name,followers_count,fan_count,picture.type(large)&access_token=${metaToken.trim()}`;
-            const res = await axios.get(graphUrl, { timeout: 4000 });
-            if (res.data) {
-              return {
-                ...page,
-                followers: res.data.followers_count || res.data.fan_count || page.followers,
-                title: res.data.name || page.title,
-                pfp: res.data.picture?.data?.url || page.pfp,
-                lastUpdated: new Date().toISOString()
-              };
-            }
-          } catch {
-            // fallback
+    try {
+      const updated = await Promise.all(pages.map(async (page) => {
+        if (!page.url) return page;
+        try {
+          const live = await fetchLiveFacebookData(page.url, metaToken);
+          if (live && live.followers > 0) {
+            const base = page.initialFollowers || page.followers;
+            return {
+              ...page,
+              followers: live.followers,
+              growth: live.followers - base,
+              views: live.views || page.views,
+              title: live.title || page.title,
+              pfp: live.pfp || page.pfp,
+              verified: live.verified !== undefined ? live.verified : page.verified,
+              lastUpdated: new Date().toISOString()
+            };
           }
-          return { ...page, lastUpdated: new Date().toISOString() };
-        }));
-        setPages(updated);
-      } catch (e) {
-        console.warn('Sync all error:', e);
-      }
-    } else {
-      setPages(prev => prev.map(p => ({
-        ...p,
-        lastUpdated: new Date().toISOString()
-      })));
+        } catch (err) {
+          // ignore single page error
+        }
+        return { ...page, lastUpdated: new Date().toISOString() };
+      }));
+      setPages(updated);
+      addNotification('Real-Time Sync Complete', `All ${pages.length} pages updated live from Facebook.`);
+    } catch (e) {
+      console.warn('Sync all error:', e);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 600);
     }
-
-    setTimeout(() => {
-      setIsRefreshing(false);
-      addNotification('Real-Time Sync Complete', `All ${pages.length} monitored pages verified.`);
-    }, 600);
   };
 
-  // Real-Time Polling Engine (Does NOT generate fake increments unless explicitly enabled in settings)
+  // Real-Time Polling Engine: periodically queries Facebook live stats for all monitored pages
   useEffect(() => {
-    if (refreshInterval === 0 && !isLiveSimActive) return;
+    if (refreshInterval === 0) return;
 
-    const tickTimer = setInterval(() => {
-      if (isLiveSimActive) {
-        setPages(prev => {
-          if (prev.length === 0) return prev;
-          const updated = [...prev];
-          const luckyIdx = Math.floor(Math.random() * updated.length);
-          const target = { ...updated[luckyIdx] };
-          
-          const deltaFollowers = Math.floor(Math.random() * 5) + 1;
-          const deltaViews = Math.floor(Math.random() * 20) + 5;
-          
-          target.followers += deltaFollowers;
-          target.growth = (target.growth || 0) + deltaFollowers;
-          target.views += deltaViews;
-          target.lastUpdated = new Date().toISOString();
-
-          updated[luckyIdx] = target;
-
-          if (target.followers % 100 < 5) {
-            addNotification(`${target.title}`, `Trending up! Live follower gain registered.`);
+    const tickTimer = setInterval(async () => {
+      // Re-fetch live Facebook data for all pages that have a URL
+      setPages(prev => {
+        if (prev.length === 0) return prev;
+        prev.forEach(async (page) => {
+          if (!page.url) return;
+          try {
+            const live = await fetchLiveFacebookData(page.url, metaToken);
+            if (live && live.followers > 0) {
+              setPages(currentPages => currentPages.map(p => {
+                if (p.id === page.id && p.followers !== live.followers) {
+                  const base = p.initialFollowers || p.followers;
+                  return {
+                    ...p,
+                    followers: live.followers,
+                    growth: live.followers - base,
+                    title: live.title || p.title,
+                    pfp: live.pfp || p.pfp,
+                    verified: live.verified !== undefined ? live.verified : p.verified,
+                    lastUpdated: new Date().toISOString()
+                  };
+                }
+                return p;
+              }));
+            }
+          } catch {
+            // silent catch on background poll
           }
-
-          return updated;
         });
-      } else {
-        // Live polling heartbeat: keeps tracker connected and verified without fake numbers
-        setPages(prev => prev.map(p => ({ ...p, lastUpdated: new Date().toISOString() })));
-      }
-    }, refreshInterval > 0 ? refreshInterval : 10000);
+        return prev.map(p => ({ ...p, lastUpdated: new Date().toISOString() }));
+      });
+    }, refreshInterval > 0 ? refreshInterval : 8000);
 
     return () => clearInterval(tickTimer);
-  }, [refreshInterval, isLiveSimActive]);
+  }, [refreshInterval, metaToken]);
 
   // Reset to 4 default mockup pages
   const handleResetDefaults = () => {

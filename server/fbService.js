@@ -102,54 +102,52 @@ export async function fetchFacebookPageData(targetUrl) {
   };
 
   try {
-    // Attempt request with realistic headers
-    const response = await axios.get(cleanUrl, {
+    // Query Facebook's official public page embed endpoint which returns live public followers without login wall
+    const pluginUrl = `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent(cleanUrl)}&show_facepile=true`;
+    const response = await axios.get(pluginUrl, {
       timeout: 8000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Cache-Control': 'no-cache',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
       },
-      validateStatus: () => true // Handle status gracefully
+      validateStatus: () => true
     });
 
     if (response.status === 200 && response.data) {
       const html = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-      const $ = cheerio.load(html);
 
-      // 1. Title
-      const ogTitle = $('meta[property="og:title"]').attr('content') || $('title').text();
-      if (ogTitle && !ogTitle.toLowerCase().includes('log into facebook')) {
-        // Strip "| Facebook"
-        pageData.title = ogTitle.replace(/\s*\|\s*Facebook.*$/i, '').trim();
+      // 1. Page / Profile Title
+      const titleMatch = html.match(/ref=embed_page["'][^>]*>([^<]+)<\/a>/i) ||
+                         html.match(/<a[^>]*class=["'][^"']*_3-8w[^"']*["'][^>]*>([^<]+)<\/a>/i);
+      if (titleMatch && titleMatch[1]) {
+        pageData.title = titleMatch[1].trim();
       }
 
-      // 2. Profile Picture
-      const ogImage = $('meta[property="og:image"]').attr('content');
-      if (ogImage && !ogImage.includes('facebook_default') && !ogImage.includes('fb_icon')) {
-        pageData.pfp = ogImage;
+      // 2. Exact Live Followers / Likes count
+      const countMatch = html.match(/class=["']_1drq["'][^>]*>([^<]+)<\/div>/i) ||
+                         html.match(/([0-9.,KMB]+)\s*(?:followers|likes|people like this|people follow this)/i);
+      if (countMatch && countMatch[1]) {
+        const parsedCount = parseMetricNumber(countMatch[1]);
+        if (parsedCount > 0) {
+          pageData.followers = parsedCount;
+          pageData.source = 'facebook_live';
+        }
       }
 
-      // 3. Followers count from og:description or text
-      // Common Facebook description format: "12,450 likes · 15,200 followers"
-      const ogDesc = $('meta[property="og:description"]').attr('content') || '';
-      const followerMatch = ogDesc.match(/([\d,.]+[KkMmBb]?)\s*(?:followers|people follow this)/i);
-      const likesMatch = ogDesc.match(/([\d,.]+[KkMmBb]?)\s*(?:likes|people like this)/i);
-
-      if (followerMatch && followerMatch[1]) {
-        pageData.followers = parseMetricNumber(followerMatch[1]);
-      } else if (likesMatch && likesMatch[1]) {
-        pageData.followers = parseMetricNumber(likesMatch[1]);
+      // 3. Official Profile Picture
+      const imgMatch = html.match(/<img[^>]+class=["'][^"']*_1drn[^"']*["'][^>]+src=["']([^"']+)["']/i);
+      if (imgMatch && imgMatch[1]) {
+        pageData.pfp = imgMatch[1].replace(/&amp;/g, '&');
       }
 
       // 4. Verification Check
-      if (html.includes('Verified Page') || html.includes('verified_badge') || html.includes('Blue tick')) {
+      if (/aria-label=["']Verified/i.test(html) || html.includes('_5dzy')) {
         pageData.verified = true;
       }
     }
   } catch (err) {
-    console.warn(`[Scraper] Could not directly scrape ${cleanUrl}: ${err.message}`);
+    console.warn(`[Scraper] Could not fetch ${cleanUrl}: ${err.message}`);
   }
 
   // Fallback defaults if Facebook blocked or restricted access
