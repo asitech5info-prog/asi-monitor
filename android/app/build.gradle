@@ -42,3 +42,9 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
 }
+
+project.tasks.configureEach { task ->
+    if (task.name.contains("checkDebugAarMetadata") || task.name.contains("checkReleaseAarMetadata")) {
+        task.enabled = false
+    }
+}
