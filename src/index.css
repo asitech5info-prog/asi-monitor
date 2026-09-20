@@ -1,15 +1,15 @@
 :root {
-  --bg-primary: #080c15;
-  --bg-surface: #0e1626;
-  --bg-surface-elevated: #141f36;
+  --bg-primary: #070c16;
+  --bg-surface: #0e172a;
+  --bg-surface-elevated: #131f38;
   --border-cyan: rgba(0, 229, 255, 0.45);
-  --border-cyan-glow: 0 0 22px rgba(0, 229, 255, 0.22);
-  --border-cyan-active: 0 0 28px rgba(0, 242, 254, 0.45);
+  --border-cyan-glow: 0 0 20px rgba(0, 229, 255, 0.18);
+  --border-cyan-active: 0 0 26px rgba(0, 242, 254, 0.4);
   --cyan-accent: #00e5ff;
   --cyan-bright: #00f2fe;
   --green-live: #00e676;
-  --green-badge-bg: rgba(0, 230, 118, 0.15);
-  --green-badge-border: rgba(0, 230, 118, 0.4);
+  --green-badge-bg: rgba(0, 230, 118, 0.14);
+  --green-badge-border: rgba(0, 230, 118, 0.35);
   --orange-accent: #ff9800;
   --orange-btn: #f59e0b;
   --fb-blue: #1877f2;
@@ -33,6 +33,7 @@ body {
   color: var(--text-primary);
   font-family: var(--font-main);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -42,17 +43,21 @@ body {
     radial-gradient(ellipse at 80% 90%, rgba(24, 119, 242, 0.06) 0%, transparent 50%);
 }
 
-/* App Container Layout */
+/* App Viewport Container - Mobile Native First */
 .app-viewport {
   width: 100%;
   max-width: 480px;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
   margin: 0 auto;
+  /* Generous top clearance for Android notification bar, camera punch-hole, and notch */
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 24px), 56px);
+  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 20px), 32px);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 @media (min-width: 768px) {
@@ -62,6 +67,7 @@ body {
     border-radius: 40px;
     border: 8px solid #1a2233;
     overflow: hidden;
+    padding-top: 24px;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 229, 255, 0.15);
   }
 }
@@ -81,30 +87,9 @@ body {
   background: rgba(0, 229, 255, 0.5);
 }
 
-/* Android Status Bar */
-.android-status-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px 4px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #cbd5e1;
-  letter-spacing: 0.3px;
-  user-select: none;
-  background: transparent;
-  z-index: 10;
-}
-
-.status-bar-icons {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 /* Top App Header */
 .app-header {
-  padding: 12px 20px;
+  padding: 8px 20px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -113,17 +98,26 @@ body {
 .app-title-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+}
+
+.app-logo-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
+  flex-shrink: 0;
 }
 
 .app-brand-title {
   font-family: var(--font-heading);
-  font-size: 1.65rem;
+  font-size: 1.55rem;
   font-weight: 800;
   letter-spacing: -0.5px;
   background: linear-gradient(135deg, #ffffff 40%, #a5f3fc 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  line-height: 1;
 }
 
 /* Live Badge */
@@ -134,17 +128,17 @@ body {
   background: rgba(0, 230, 118, 0.14);
   border: 1px solid rgba(0, 230, 118, 0.35);
   color: var(--green-live);
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 9999px;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
 .live-dot-pulse {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   background-color: var(--green-live);
   border-radius: 50%;
   position: relative;
@@ -163,14 +157,8 @@ body {
 }
 
 @keyframes pulseRadar {
-  0% {
-    transform: scale(0.6);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(2.4); opacity: 0; }
 }
 
 /* Header Action Buttons */
@@ -221,15 +209,15 @@ body {
 
 /* Search / Input Bar */
 .input-section {
-  padding: 8px 20px 14px;
+  padding: 6px 20px 14px;
 }
 
 .url-input-container {
   display: flex;
   align-items: center;
-  background: #111a2e;
+  background: #10192e;
   border: 1.5px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
+  border-radius: 18px;
   padding: 5px 6px 5px 16px;
   transition: all 0.25s ease;
 }
@@ -252,7 +240,7 @@ body {
 
 .url-text-input::placeholder {
   color: #64748b;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .add-btn {
@@ -262,8 +250,8 @@ body {
   outline: none;
   font-weight: 700;
   font-size: 0.92rem;
-  padding: 9px 20px;
-  border-radius: 15px;
+  padding: 9px 18px;
+  border-radius: 13px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
@@ -287,7 +275,7 @@ body {
 .stats-summary-bar {
   margin: 0 20px 12px;
   padding: 10px 16px;
-  background: rgba(14, 22, 38, 0.85);
+  background: rgba(14, 23, 42, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   display: flex;
@@ -333,7 +321,7 @@ body {
 /* Page Card Rows Container */
 .cards-scroll-container {
   flex: 1;
-  padding: 4px 20px 16px;
+  padding: 4px 20px 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -348,7 +336,7 @@ body {
   box-shadow: var(--border-cyan-glow);
   padding: 16px 18px;
   position: relative;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -362,20 +350,6 @@ body {
   background: #0f1930;
 }
 
-.monitor-row-card.just-updated {
-  border-color: #38bdf8;
-  animation: cardFlash 0.9s ease-out;
-}
-
-@keyframes cardFlash {
-  0% {
-    box-shadow: 0 0 35px rgba(0, 229, 255, 0.6);
-  }
-  100% {
-    box-shadow: var(--border-cyan-glow);
-  }
-}
-
 /* PFP Avatar */
 .card-pfp-wrapper {
   position: relative;
@@ -383,8 +357,8 @@ body {
 }
 
 .card-avatar-img {
-  width: 58px;
-  height: 58px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   object-fit: cover;
   background: #1a243a;
@@ -396,7 +370,7 @@ body {
   position: absolute;
   bottom: -1px;
   right: -2px;
-  background: #0a0e17;
+  background: #070c16;
   border-radius: 50%;
   color: #1877f2;
 }
@@ -454,6 +428,14 @@ body {
 .metric-col-followers {
   display: flex;
   flex-direction: column;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.metric-col-followers:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .followers-count-row {
@@ -483,17 +465,6 @@ body {
   display: flex;
   align-items: center;
   gap: 3px;
-  box-shadow: 0 0 8px rgba(0, 230, 118, 0.2);
-}
-
-.growth-pill-badge.pulse-pop {
-  animation: popBadge 0.6s ease;
-}
-
-@keyframes popBadge {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.22); }
-  100% { transform: scale(1); }
 }
 
 .metric-micro-label {
@@ -507,6 +478,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.metric-col-views:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .views-count-row {
@@ -528,7 +507,7 @@ body {
   letter-spacing: -0.3px;
 }
 
-/* Card Action Menu Dropdown / Modal */
+/* Card Action Menu Dropdown */
 .card-dropdown-menu {
   position: absolute;
   top: 45px;
@@ -542,7 +521,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 140px;
+  min-width: 145px;
 }
 
 .menu-item-action {
@@ -570,39 +549,12 @@ body {
   color: #fca5a5;
 }
 
-/* Android Bottom Navigation Bar */
-.android-nav-bar {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 12px 20px 16px;
-  background: #080c15;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  user-select: none;
-}
-
-.android-nav-btn {
-  background: transparent;
-  border: none;
-  color: #64748b;
-  cursor: pointer;
-  padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
-}
-
-.android-nav-btn:hover {
-  color: #cbd5e1;
-}
-
-/* Settings Modal */
+/* Modals */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -617,7 +569,7 @@ body {
   border: 1.5px solid var(--border-cyan);
   box-shadow: 0 0 35px rgba(0, 229, 255, 0.25);
   border-radius: 24px;
-  padding: 24px;
+  padding: 22px;
   color: #ffffff;
 }
 
@@ -625,76 +577,47 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   font-family: var(--font-heading);
   font-size: 1.25rem;
   font-weight: 700;
 }
 
 .modal-section {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .modal-label {
   font-size: 0.82rem;
   color: #94a3b8;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   display: block;
-}
-
-.interval-pill-group {
-  display: flex;
-  gap: 8px;
-}
-
-.interval-pill {
-  flex: 1;
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  padding: 8px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.82rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.interval-pill.active {
-  background: var(--cyan-accent);
-  color: #000000;
-  border-color: var(--cyan-bright);
-}
-
-.toggle-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 /* Empty State */
 .empty-pages-state {
   text-align: center;
-  padding: 40px 20px;
+  padding: 50px 20px;
   color: #64748b;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .preset-btn {
-  background: rgba(0, 229, 255, 0.1);
+  background: rgba(0, 229, 255, 0.12);
   border: 1px solid var(--border-cyan);
   color: var(--cyan-bright);
-  padding: 8px 16px;
+  padding: 10px 20px;
   border-radius: 12px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .preset-btn:hover {

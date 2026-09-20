@@ -67,26 +67,12 @@ export function generateAvatarUrl(title) {
  * Generate realistic base metrics based on title hash so different pages get realistic distinct metrics
  */
 export function generateRealisticMetrics(title) {
-  let hash = 0;
-  const str = title.toLowerCase();
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  const pos = Math.abs(hash);
-
-  // Range from 45K to 850K followers
-  const followers = 45000 + (pos % 780000);
-  // Views range from 2.5x to 5.5x followers
-  const viewsRatio = 2.4 + ((pos % 30) / 10);
-  const views = Math.round(followers * viewsRatio);
-  const growth = Math.floor(120 + (pos % 900));
-
+  // Clean, realistic base starting metrics for manual input confirmation
   return {
-    followers,
-    views,
-    growth,
-    verified: pos % 2 === 0
+    followers: 1000,
+    views: 2500,
+    growth: 0,
+    verified: false
   };
 }
 

@@ -89,8 +89,13 @@ export default function MonitorCard({
 
         {/* Metrics Row: Followers & Views */}
         <div className="card-metrics-grid">
-          {/* Followers Column */}
-          <div className="metric-col-followers">
+          {/* Followers Column - Click to edit */}
+          <div 
+            className="metric-col-followers" 
+            onClick={() => onEdit(page)}
+            title={`${page.followers.toLocaleString()} exact followers (tap to edit)`}
+            style={{ cursor: 'pointer' }}
+          >
             <div className="followers-count-row">
               <span className="followers-main-number">
                 {formatMetric(page.followers)}
@@ -100,18 +105,23 @@ export default function MonitorCard({
                 <span>{formatGrowth(page.growth || 0)}</span>
               </div>
             </div>
-            <span className="metric-micro-label">Followers</span>
+            <span className="metric-micro-label">Followers (tap to edit)</span>
           </div>
 
-          {/* Views Column */}
-          <div className="metric-col-views">
+          {/* Views Column - Click to edit */}
+          <div 
+            className="metric-col-views"
+            onClick={() => onEdit(page)}
+            title={`${page.views.toLocaleString()} exact views (tap to edit)`}
+            style={{ cursor: 'pointer' }}
+          >
             <div className="views-count-row">
               <Eye size={16} className="views-eye-icon" />
               <span className="views-main-number">
                 {formatMetric(page.views)}
               </span>
             </div>
-            <span className="metric-micro-label">Views</span>
+            <span className="metric-micro-label">Views (tap to edit)</span>
           </div>
         </div>
       </div>

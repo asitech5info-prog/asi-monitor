@@ -6,16 +6,16 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
   if (!isOpen || !initialData) return null;
 
   const [title, setTitle] = useState(initialData.title || '');
-  const [followers, setFollowers] = useState(initialData.followers || 450000);
-  const [views, setViews] = useState(initialData.views || 1200000);
+  const [followers, setFollowers] = useState(initialData.followers !== undefined ? initialData.followers : 1000);
+  const [views, setViews] = useState(initialData.views !== undefined ? initialData.views : 2500);
   const [pfp, setPfp] = useState(initialData.pfp || '');
   const [verified, setVerified] = useState(Boolean(initialData.verified));
 
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title || '');
-      setFollowers(initialData.followers || 450000);
-      setViews(initialData.views || 1200000);
+      setFollowers(initialData.followers !== undefined ? initialData.followers : 1000);
+      setViews(initialData.views !== undefined ? initialData.views : 2500);
       setPfp(initialData.pfp || '');
       setVerified(Boolean(initialData.verified));
     }
@@ -26,8 +26,9 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
     onConfirmAdd({
       ...initialData,
       title: title.trim() || 'Facebook Page',
-      followers: Number(followers) || 100000,
-      views: Number(views) || 300000,
+      followers: followers === '' ? 0 : Number(followers),
+      views: views === '' ? 0 : Number(views),
+      growth: 0,
       pfp: pfp.trim(),
       verified
     });
