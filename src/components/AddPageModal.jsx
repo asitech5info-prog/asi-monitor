@@ -7,7 +7,8 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
 
   const [title, setTitle] = useState(initialData.title || '');
   const [followers, setFollowers] = useState(initialData.followers !== undefined ? initialData.followers : 1000);
-  const [views, setViews] = useState(initialData.views !== undefined ? initialData.views : 2500);
+  const [views, setViews] = useState(initialData.views !== undefined ? initialData.views : 555000);
+  const [reelTitle, setReelTitle] = useState(initialData.latestPost?.title || '');
   const [pfp, setPfp] = useState(initialData.pfp || '');
   const [verified, setVerified] = useState(Boolean(initialData.verified));
 
@@ -15,7 +16,8 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
     if (initialData) {
       setTitle(initialData.title || '');
       setFollowers(initialData.followers !== undefined ? initialData.followers : 1000);
-      setViews(initialData.views !== undefined ? initialData.views : 2500);
+      setViews(initialData.views !== undefined ? initialData.views : 555000);
+      setReelTitle(initialData.latestPost?.title || 'Featured Viral Reel');
       setPfp(initialData.pfp || '');
       setVerified(Boolean(initialData.verified));
     }
@@ -23,11 +25,22 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const finalViews = views === '' ? 555000 : Number(views);
+    const finalTitle = title.trim() || 'Facebook Page';
     onConfirmAdd({
       ...initialData,
-      title: title.trim() || 'Facebook Page',
+      title: finalTitle,
       followers: followers === '' ? 0 : Number(followers),
-      views: views === '' ? 0 : Number(views),
+      views: finalViews,
+      latestPost: {
+        id: `post-${Date.now()}`,
+        type: 'reel',
+        title: reelTitle.trim() || `${finalTitle} Featured Reel`,
+        views: finalViews,
+        publishedAt: 'Just now',
+        url: initialData.url ? `${initialData.url.replace(/\/+$/, '')}/videos` : 'https://www.facebook.com',
+        isNew: true
+      },
       growth: 0,
       pfp: pfp.trim(),
       verified
@@ -113,7 +126,7 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
             <div>
               <label className="modal-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Eye size={14} color="#38bdf8" />
-                <span>Views Count</span>
+                <span>Public Reel Views</span>
               </label>
               <input 
                 type="number" 
@@ -128,12 +141,31 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
                 }}
                 value={views}
                 onChange={(e) => setViews(e.target.value)}
+                placeholder="555000"
                 required
               />
               <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginTop: '3px' }}>
                 Preview: {formatMetric(views)}
               </span>
             </div>
+          </div>
+
+          <div>
+            <label className="modal-label">Latest Reel / Video Headline</label>
+            <input 
+              type="text" 
+              className="url-text-input"
+              style={{
+                width: '100%',
+                background: '#131e36',
+                padding: '9px 12px',
+                borderRadius: '10px',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}
+              value={reelTitle}
+              onChange={(e) => setReelTitle(e.target.value)}
+              placeholder="e.g. Next-Gen Quantum AI Unboxing"
+            />
           </div>
 
           {/* Verified Toggle */}

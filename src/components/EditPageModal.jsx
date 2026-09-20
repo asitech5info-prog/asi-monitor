@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Check, CheckCircle2, Eye, Users } from 'lucide-react';
+import { X, Check, CheckCircle2, Film, Users, Play } from 'lucide-react';
 import { parseFollowerText } from '../utils/facebookParser';
 import { formatMetric } from '../utils/formatters';
 
@@ -9,7 +9,8 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
   const [title, setTitle] = useState(page.title || '');
   const [followersInput, setFollowersInput] = useState(String(page.followers || 0));
   const [growth, setGrowth] = useState(page.growth || 0);
-  const [viewsInput, setViewsInput] = useState(String(page.views || 0));
+  const [viewsInput, setViewsInput] = useState(String(page.latestPost?.views || page.views || 0));
+  const [reelTitle, setReelTitle] = useState(page.latestPost?.title || '');
   const [pfp, setPfp] = useState(page.pfp || '');
   const [verified, setVerified] = useState(Boolean(page.verified));
 
@@ -21,7 +22,8 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
       setTitle(page.title || '');
       setFollowersInput(String(page.followers || 0));
       setGrowth(page.growth || 0);
-      setViewsInput(String(page.views || 0));
+      setViewsInput(String(page.latestPost?.views || page.views || 0));
+      setReelTitle(page.latestPost?.title || 'Featured Reel');
       setPfp(page.pfp || '');
       setVerified(Boolean(page.verified));
     }
@@ -52,6 +54,17 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
       followers: parsedFollowers,
       growth: Number(growth) || 0,
       views: parsedViews,
+      latestPost: {
+        ...(page.latestPost || {
+          id: `post-${Date.now()}`,
+          type: 'reel',
+          publishedAt: 'Latest',
+          url: page.url ? `${page.url.replace(/\/+$/, '')}/videos` : 'https://www.facebook.com'
+        }),
+        title: reelTitle.trim() || page.latestPost?.title || 'Featured Reel',
+        views: parsedViews,
+        publishedAt: 'Updated'
+      },
       pfp: pfp.trim(),
       verified
     });
@@ -62,7 +75,7 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
     <div className="modal-backdrop" onClick={onClose}>
       <div className="settings-modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header-title">
-          <span>Edit Page Metrics</span>
+          <span>Edit Page & Reel Metrics</span>
           <button 
             className="icon-btn-round" 
             onClick={onClose} 
@@ -138,11 +151,11 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
             </div>
           </div>
 
-          {/* Views Input (supports 555k, 555000, 1.2M, etc.) */}
+          {/* Featured Public Reel Views (supports 555k, 555000, 1.2M, etc.) */}
           <div>
             <label className="modal-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <Eye size={14} color="#38bdf8" /> Total Views Count
+                <Play size={13} color="#38bdf8" /> Public Reel / Post Views
               </span>
               <span style={{ color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.8rem' }}>
                 = {formatMetric(parsedViews)} ({parsedViews.toLocaleString()})
@@ -167,9 +180,27 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
               placeholder="e.g. 555k or 555000"
               required
             />
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
-              Tip: You can type <strong>555k</strong>, <strong>555000</strong>, or <strong>1.2M</strong>.
-            </span>
+          </div>
+
+          {/* Featured Reel Title */}
+          <div>
+            <label className="modal-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Film size={13} color="#ff007a" /> Latest Reel / Post Title
+            </label>
+            <input 
+              type="text" 
+              className="url-text-input"
+              style={{
+                width: '100%',
+                background: '#131e36',
+                padding: '9px 12px',
+                borderRadius: '10px',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}
+              value={reelTitle}
+              onChange={(e) => setReelTitle(e.target.value)}
+              placeholder="e.g. Next-Gen Quantum AI Hardware Unboxing"
+            />
           </div>
 
           <div>

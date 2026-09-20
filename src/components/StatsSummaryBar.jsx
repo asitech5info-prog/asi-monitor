@@ -4,7 +4,7 @@ import { formatMetric } from '../utils/formatters';
 export default function StatsSummaryBar({ pages = [] }) {
   const totalPages = pages.length;
   const totalFollowers = pages.reduce((sum, p) => sum + (Number(p.followers) || 0), 0);
-  const totalViews = pages.reduce((sum, p) => sum + (Number(p.views) || 0), 0);
+  const totalViews = pages.reduce((sum, p) => sum + (Number(p.latestPost?.views) || Number(p.views) || 0), 0);
 
   return (
     <div className="stats-summary-bar">
@@ -19,8 +19,10 @@ export default function StatsSummaryBar({ pages = [] }) {
       </div>
       <div className="stat-divider" />
       <div className="stat-item">
-        <div className="stat-label">Total Views</div>
-        <div className="stat-value">{formatMetric(totalViews)}</div>
+        <div className="stat-label">Public Reel Views</div>
+        <div className="stat-value" title={`${totalViews.toLocaleString()} total views across latest reels and posts`}>
+          {formatMetric(totalViews)}
+        </div>
       </div>
     </div>
   );
