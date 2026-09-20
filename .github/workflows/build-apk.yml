@@ -3,6 +3,8 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -60,10 +62,23 @@ jobs:
           cd android
           ./gradlew assembleDebug -x lint -x test --no-daemon --stacktrace
 
+      - name: Determine Release Tag & Version
+        id: vars
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="v1.1.0"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
       - name: Locate and Stage APK
         run: |
           mkdir -p release-apk
-          find . -name "*.apk" -exec cp -v {} release-apk/ \;
+          find android/ -name "*.apk" -exec cp -v {} release-apk/ \;
+          if [ -f release-apk/app-debug.apk ]; then
+            cp release-apk/app-debug.apk release-apk/ASI-Monitor-${{ steps.vars.outputs.tag }}.apk
+          fi
           ls -la release-apk/
 
       - name: Upload Debug APK Artifact
@@ -73,11 +88,24 @@ jobs:
           path: release-apk/
           retention-days: 30
 
-      - name: Create GitHub Release
+      - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: "ASI Monitor v1.0.0 (Android APK)"
-          body: "Direct download for the ASI Monitor Android APK. Install `app-debug.apk` directly on your Android phone."
-          files: release-apk/*.apk
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: "ASI Monitor ${{ steps.vars.outputs.tag }} (Mobile Optimized APK)"
+          body: |
+            ## 📱 ASI Monitor ${{ steps.vars.outputs.tag }} - Android APK Direct Download
+
+            ### 🚀 What's New:
+            - **Accurate Followers**: Exact follower counts (e.g. `2,354`) formatted cleanly with commas, never rounded to `2.4K`.
+            - **Mobile Viewport Optimization**: Zero horizontal clipping and full safe-area support for notches, punch-holes, and status bars.
+            - **Clean Follower Cards**: Removed cramped reel/view cards so the dashboard focuses 100% on live page followers.
+            - **Playwright Live Engine**: Headless browser scraper integration for accurate real-time metrics.
+
+            ### 📥 Download & Install:
+            - Download **`ASI-Monitor-${{ steps.vars.outputs.tag }}.apk`** (or `app-debug.apk`) below directly to your phone.
+            - Tap the downloaded file to install on your Android device.
+          files: |
+            release-apk/*.apk
+          make_latest: true
           fail_on_unmatched_files: false
