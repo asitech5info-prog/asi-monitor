@@ -1,35 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { X, Check, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Check, CheckCircle2, Eye, Users } from 'lucide-react';
+import { parseFollowerText } from '../utils/facebookParser';
+import { formatMetric } from '../utils/formatters';
 
-export default function EditPageModal({ isOpen, onClose, page, onSave }) {
+export default function EditPageModal({ isOpen, onClose, page, onSave, initialFocus = 'views' }) {
   if (!isOpen || !page) return null;
 
   const [title, setTitle] = useState(page.title || '');
-  const [followers, setFollowers] = useState(page.followers || 0);
+  const [followersInput, setFollowersInput] = useState(String(page.followers || 0));
   const [growth, setGrowth] = useState(page.growth || 0);
-  const [views, setViews] = useState(page.views || 0);
+  const [viewsInput, setViewsInput] = useState(String(page.views || 0));
   const [pfp, setPfp] = useState(page.pfp || '');
   const [verified, setVerified] = useState(Boolean(page.verified));
+
+  const viewsInputRef = useRef(null);
+  const followersInputRef = useRef(null);
 
   useEffect(() => {
     if (page) {
       setTitle(page.title || '');
-      setFollowers(page.followers || 0);
+      setFollowersInput(String(page.followers || 0));
       setGrowth(page.growth || 0);
-      setViews(page.views || 0);
+      setViewsInput(String(page.views || 0));
       setPfp(page.pfp || '');
       setVerified(Boolean(page.verified));
     }
   }, [page]);
 
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        if (initialFocus === 'views' && viewsInputRef.current) {
+          viewsInputRef.current.focus();
+          viewsInputRef.current.select();
+        } else if (initialFocus === 'followers' && followersInputRef.current) {
+          followersInputRef.current.focus();
+          followersInputRef.current.select();
+        }
+      }, 100);
+    }
+  }, [isOpen, initialFocus]);
+
+  const parsedFollowers = parseFollowerText(followersInput);
+  const parsedViews = parseFollowerText(viewsInput);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave({
       ...page,
-      title: title.trim(),
-      followers: Number(followers) || 0,
+      title: title.trim() || 'Facebook Page',
+      followers: parsedFollowers,
       growth: Number(growth) || 0,
-      views: Number(views) || 0,
+      views: parsedViews,
       pfp: pfp.trim(),
       verified
     });
@@ -71,19 +93,29 @@ export default function EditPageModal({ isOpen, onClose, page, onSave }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label className="modal-label">Followers Count</label>
+              <label className="modal-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Users size={13} color="#00e676" /> Followers
+                </span>
+                <span style={{ color: '#00e676', fontFamily: 'var(--font-mono)', fontSize: '0.72rem' }}>
+                  {formatMetric(parsedFollowers)}
+                </span>
+              </label>
               <input 
-                type="number" 
+                ref={followersInputRef}
+                type="text" 
                 className="url-text-input"
                 style={{
                   width: '100%',
                   background: '#131e36',
                   padding: '9px 12px',
                   borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  fontFamily: 'var(--font-mono)'
                 }}
-                value={followers}
-                onChange={(e) => setFollowers(e.target.value)}
+                value={followersInput}
+                onChange={(e) => setFollowersInput(e.target.value)}
+                placeholder="e.g. 2500 or 2.5k"
                 required
               />
             </div>
@@ -97,7 +129,8 @@ export default function EditPageModal({ isOpen, onClose, page, onSave }) {
                   background: '#131e36',
                   padding: '9px 12px',
                   borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  fontFamily: 'var(--font-mono)'
                 }}
                 value={growth}
                 onChange={(e) => setGrowth(e.target.value)}
@@ -105,22 +138,38 @@ export default function EditPageModal({ isOpen, onClose, page, onSave }) {
             </div>
           </div>
 
+          {/* Views Input (supports 555k, 555000, 1.2M, etc.) */}
           <div>
-            <label className="modal-label">Views Count</label>
+            <label className="modal-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Eye size={14} color="#38bdf8" /> Total Views Count
+              </span>
+              <span style={{ color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.8rem' }}>
+                = {formatMetric(parsedViews)} ({parsedViews.toLocaleString()})
+              </span>
+            </label>
             <input 
-              type="number" 
+              ref={viewsInputRef}
+              type="text" 
               className="url-text-input"
               style={{
                 width: '100%',
                 background: '#131e36',
-                padding: '9px 12px',
+                padding: '10px 12px',
                 borderRadius: '10px',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                border: '1.5px solid rgba(56, 189, 248, 0.5)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '1rem',
+                color: '#ffffff'
               }}
-              value={views}
-              onChange={(e) => setViews(e.target.value)}
+              value={viewsInput}
+              onChange={(e) => setViewsInput(e.target.value)}
+              placeholder="e.g. 555k or 555000"
               required
             />
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
+              Tip: You can type <strong>555k</strong>, <strong>555000</strong>, or <strong>1.2M</strong>.
+            </span>
           </div>
 
           <div>

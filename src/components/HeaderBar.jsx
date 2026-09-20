@@ -12,12 +12,7 @@ export default function HeaderBar({
   return (
     <header className="app-header">
       <div className="app-title-group">
-        <img src="/logo.svg" alt="ASI Logo" className="app-logo-badge" />
         <h1 className="app-brand-title">ASI Monitor</h1>
-        <div className="live-pill-badge" title="Live Real-Time Tracker Active">
-          <div className="live-dot-pulse" />
-          <span>LIVE</span>
-        </div>
       </div>
 
       <div className="header-actions">

@@ -110,7 +110,7 @@ export async function fetchLiveFacebookData(inputUrl, metaToken = '') {
         return {
           title,
           followers,
-          views: Math.round(followers * 3.1),
+          views: 555000,
           pfp,
           verified: true,
           url: cleanUrl,
@@ -147,7 +147,7 @@ export async function fetchLiveFacebookData(inputUrl, metaToken = '') {
           return {
             title: res.data.title || extractPageNameFromUrl(cleanUrl),
             followers: res.data.followers,
-            views: res.data.views || Math.round(res.data.followers * 3.1),
+            views: res.data.views || 555000,
             pfp: res.data.pfp || generateAvatarUrl(res.data.title),
             verified: res.data.verified,
             url: cleanUrl,
@@ -186,7 +186,7 @@ export async function fetchLiveFacebookData(inputUrl, metaToken = '') {
       return {
         title,
         followers,
-        views: Math.round(followers * 3.1),
+        views: 555000,
         pfp,
         verified: isVerified,
         url: cleanUrl,

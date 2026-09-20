@@ -10,7 +10,7 @@ import SettingsModal from './components/SettingsModal';
 import NotificationsModal from './components/NotificationsModal';
 import EditPageModal from './components/EditPageModal';
 import AddPageModal from './components/AddPageModal';
-import { fetchLiveFacebookData, extractPageNameFromUrl } from './utils/facebookParser';
+import { fetchLiveFacebookData, extractPageNameFromUrl, parseFollowerText } from './utils/facebookParser';
 import { PlusCircle, RotateCcw } from 'lucide-react';
 
 const STORAGE_KEY = 'asi_monitor_pages_v3';
@@ -47,6 +47,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
+  const [editFocusField, setEditFocusField] = useState('views');
   const [pendingAddPage, setPendingAddPage] = useState(null);
   
   const [notifications, setNotifications] = useState([
@@ -83,12 +84,25 @@ export default function App() {
   };
 
   // Handle URL input from search bar -> automatic live fetch from Facebook!
-  const handleInputSubmit = async (url) => {
+  const handleInputSubmit = async (inputStr) => {
     setIsLoading(true);
     try {
-      const resolved = await fetchLiveFacebookData(url, metaToken);
+      // Check if user entered views alongside URL (e.g. "facebook.com/mypage 555k" or "facebook.com/mypage, 555000")
+      let customViews = null;
+      let cleanInput = inputStr.trim();
+      const viewsMatch = cleanInput.match(/(?:,\s*|\s+)(?:views?[:\s=]*)?([\d.,]+)\s*([KMBkmb])?(?:\s*views?)?$/i);
+      if (viewsMatch && viewsMatch[1]) {
+        customViews = parseFollowerText(viewsMatch[1] + (viewsMatch[2] || ''));
+        cleanInput = cleanInput.replace(viewsMatch[0], '').trim();
+      }
+
+      const resolved = await fetchLiveFacebookData(cleanInput, metaToken);
       if (resolved && resolved.followers > 0) {
-        // AUTOMATIC REAL-TIME ADD: Directly adds without manual input!
+        // Use user's exact views if provided, or resolved views, or realistic default (555k)
+        const finalViews = customViews !== null && customViews > 0
+          ? customViews
+          : (resolved.views && resolved.views > 0 ? resolved.views : 555000);
+
         const newPage = {
           id: `page-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
           title: resolved.title,
@@ -97,7 +111,7 @@ export default function App() {
           pfp: resolved.pfp,
           followers: resolved.followers,
           initialFollowers: resolved.followers,
-          views: resolved.views || Math.round(resolved.followers * 3.1),
+          views: finalViews,
           growth: 0,
           verified: resolved.verified,
           isLive: true,
@@ -106,7 +120,7 @@ export default function App() {
         };
 
         setPages(prev => [newPage, ...prev]);
-        addNotification(`Live Added: ${resolved.title}`, `Auto-tracked ${resolved.followers.toLocaleString()} real followers directly from Facebook!`);
+        addNotification(`Live Added: ${resolved.title}`, `Auto-tracked ${resolved.followers.toLocaleString()} real followers & ${finalViews.toLocaleString()} views!`);
 
         confetti({
           particleCount: 50,
@@ -121,12 +135,12 @@ export default function App() {
         // Fallback: If Facebook blocked or private, open modal so user can configure
         setPendingAddPage({
           id: `page-${Date.now()}`,
-          title: resolved?.title || extractPageNameFromUrl(url),
+          title: resolved?.title || extractPageNameFromUrl(cleanInput),
           handle: (resolved?.title || 'page').toLowerCase().replace(/\s+/g, ''),
-          url: resolved?.url || url,
+          url: resolved?.url || cleanInput,
           pfp: resolved?.pfp || '',
           followers: resolved?.followers || 1000,
-          views: resolved?.views || 2500,
+          views: customViews || 555000,
           growth: 0,
           verified: false
         });
@@ -338,7 +352,10 @@ export default function App() {
               page={page}
               onDelete={handleDeletePage}
               onRefresh={handleRefreshSingle}
-              onEdit={(p) => setEditingPage(p)}
+              onEdit={(p, field = 'views') => {
+                setEditingPage(p);
+                setEditFocusField(field);
+              }}
               isRefreshing={isRefreshing}
             />
           ))
@@ -380,6 +397,7 @@ export default function App() {
         onClose={() => setEditingPage(null)}
         page={editingPage}
         onSave={handleSaveEdit}
+        initialFocus={editFocusField}
       />
     </div>
   );

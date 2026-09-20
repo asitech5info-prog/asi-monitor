@@ -92,7 +92,7 @@ export default function MonitorCard({
           {/* Followers Column - Click to edit */}
           <div 
             className="metric-col-followers" 
-            onClick={() => onEdit(page)}
+            onClick={() => onEdit(page, 'followers')}
             title={`${page.followers.toLocaleString()} exact followers (tap to edit)`}
             style={{ cursor: 'pointer' }}
           >
@@ -111,7 +111,7 @@ export default function MonitorCard({
           {/* Views Column - Click to edit */}
           <div 
             className="metric-col-views"
-            onClick={() => onEdit(page)}
+            onClick={() => onEdit(page, 'views')}
             title={`${page.views.toLocaleString()} exact views (tap to edit)`}
             style={{ cursor: 'pointer' }}
           >
