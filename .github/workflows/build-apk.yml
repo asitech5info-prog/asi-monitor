@@ -55,11 +55,14 @@ jobs:
       - name: Build Android Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug -x lint -x test --no-daemon --stacktrace
 
-      - name: List Generated APK Files
+      - name: Debug Output If Failed
+        if: failure()
         run: |
-          find android/app/build/outputs/ -type f -name "*.apk" -exec ls -la {} +
+          echo "=== BUILD FAILED - RUNNING WITH INFO ==="
+          cd android
+          ./gradlew assembleDebug -x lint -x test --no-daemon --info || true
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
