@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Check, CheckCircle2, Film, Users, Play } from 'lucide-react';
+import { X, Check, CheckCircle2, Users, TrendingUp } from 'lucide-react';
 import { parseFollowerText } from '../utils/facebookParser';
-import { formatMetric } from '../utils/formatters';
+import { formatExactFollowers } from '../utils/formatters';
 
-export default function EditPageModal({ isOpen, onClose, page, onSave, initialFocus = 'views' }) {
+export default function EditPageModal({ isOpen, onClose, page, onSave, initialFocus = 'followers' }) {
   if (!isOpen || !page) return null;
 
   const [title, setTitle] = useState(page.title || '');
   const [followersInput, setFollowersInput] = useState(String(page.followers || 0));
   const [growth, setGrowth] = useState(page.growth || 0);
-  const [viewsInput, setViewsInput] = useState(String(page.latestPost?.views || page.views || 0));
-  const [reelTitle, setReelTitle] = useState(page.latestPost?.title || '');
   const [pfp, setPfp] = useState(page.pfp || '');
   const [verified, setVerified] = useState(Boolean(page.verified));
 
-  const viewsInputRef = useRef(null);
   const followersInputRef = useRef(null);
 
   useEffect(() => {
@@ -22,8 +19,6 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
       setTitle(page.title || '');
       setFollowersInput(String(page.followers || 0));
       setGrowth(page.growth || 0);
-      setViewsInput(String(page.latestPost?.views || page.views || 0));
-      setReelTitle(page.latestPost?.title || 'Featured Reel');
       setPfp(page.pfp || '');
       setVerified(Boolean(page.verified));
     }
@@ -32,19 +27,15 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => {
-        if (initialFocus === 'views' && viewsInputRef.current) {
-          viewsInputRef.current.focus();
-          viewsInputRef.current.select();
-        } else if (initialFocus === 'followers' && followersInputRef.current) {
+        if (followersInputRef.current) {
           followersInputRef.current.focus();
           followersInputRef.current.select();
         }
       }, 100);
     }
-  }, [isOpen, initialFocus]);
+  }, [isOpen]);
 
   const parsedFollowers = parseFollowerText(followersInput);
-  const parsedViews = parseFollowerText(viewsInput);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -53,18 +44,6 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
       title: title.trim() || 'Facebook Page',
       followers: parsedFollowers,
       growth: Number(growth) || 0,
-      views: parsedViews,
-      latestPost: {
-        ...(page.latestPost || {
-          id: `post-${Date.now()}`,
-          type: 'reel',
-          publishedAt: 'Latest',
-          url: page.url ? `${page.url.replace(/\/+$/, '')}/videos` : 'https://www.facebook.com'
-        }),
-        title: reelTitle.trim() || page.latestPost?.title || 'Featured Reel',
-        views: parsedViews,
-        publishedAt: 'Updated'
-      },
       pfp: pfp.trim(),
       verified
     });
@@ -75,7 +54,7 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
     <div className="modal-backdrop" onClick={onClose}>
       <div className="settings-modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header-title">
-          <span>Edit Page & Reel Metrics</span>
+          <span>Edit Follower Metrics</span>
           <button 
             className="icon-btn-round" 
             onClick={onClose} 
@@ -90,164 +69,79 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
             <label className="modal-label">Page / Profile Title</label>
             <input 
               type="text" 
-              className="url-text-input"
-              style={{
-                width: '100%',
-                background: '#131e36',
-                padding: '9px 12px',
-                borderRadius: '10px',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
-              }}
+              className="url-text-input modal-input-field"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label className="modal-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Users size={13} color="#00e676" /> Followers
-                </span>
-                <span style={{ color: '#00e676', fontFamily: 'var(--font-mono)', fontSize: '0.72rem' }}>
-                  {formatMetric(parsedFollowers)}
-                </span>
-              </label>
-              <input 
-                ref={followersInputRef}
-                type="text" 
-                className="url-text-input"
-                style={{
-                  width: '100%',
-                  background: '#131e36',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  fontFamily: 'var(--font-mono)'
-                }}
-                value={followersInput}
-                onChange={(e) => setFollowersInput(e.target.value)}
-                placeholder="e.g. 2500 or 2.5k"
-                required
-              />
-            </div>
-            <div>
-              <label className="modal-label">Live Growth (+/-)</label>
-              <input 
-                type="number" 
-                className="url-text-input"
-                style={{
-                  width: '100%',
-                  background: '#131e36',
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  fontFamily: 'var(--font-mono)'
-                }}
-                value={growth}
-                onChange={(e) => setGrowth(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Featured Public Reel Views (supports 555k, 555000, 1.2M, etc.) */}
           <div>
             <label className="modal-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <Play size={13} color="#38bdf8" /> Public Reel / Post Views
+                <Users size={14} color="#00e676" /> Exact Follower Count
               </span>
-              <span style={{ color: '#38bdf8', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.8rem' }}>
-                = {formatMetric(parsedViews)} ({parsedViews.toLocaleString()})
+              <span style={{ color: '#00e676', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.85rem' }}>
+                = {formatExactFollowers(parsedFollowers)} followers
               </span>
             </label>
             <input 
-              ref={viewsInputRef}
+              ref={followersInputRef}
               type="text" 
-              className="url-text-input"
-              style={{
-                width: '100%',
-                background: '#131e36',
-                padding: '10px 12px',
-                borderRadius: '10px',
-                border: '1.5px solid rgba(56, 189, 248, 0.5)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '1rem',
-                color: '#ffffff'
-              }}
-              value={viewsInput}
-              onChange={(e) => setViewsInput(e.target.value)}
-              placeholder="e.g. 555k or 555000"
+              className="url-text-input modal-input-field highlighted-input"
+              value={followersInput}
+              onChange={(e) => setFollowersInput(e.target.value)}
+              placeholder="e.g. 2354 or 2,354"
               required
             />
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginTop: '3px' }}>
+              Type exact number like <strong>2354</strong> or <strong>2,354</strong>. It will display accurately with commas.
+            </span>
           </div>
 
-          {/* Featured Reel Title */}
           <div>
             <label className="modal-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Film size={13} color="#ff007a" /> Latest Reel / Post Title
+              <TrendingUp size={13} color="#38bdf8" /> Live Growth (+/-)
             </label>
             <input 
-              type="text" 
-              className="url-text-input"
-              style={{
-                width: '100%',
-                background: '#131e36',
-                padding: '9px 12px',
-                borderRadius: '10px',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
-              }}
-              value={reelTitle}
-              onChange={(e) => setReelTitle(e.target.value)}
-              placeholder="e.g. Next-Gen Quantum AI Hardware Unboxing"
+              type="number" 
+              className="url-text-input modal-input-field"
+              value={growth}
+              onChange={(e) => setGrowth(e.target.value)}
+              placeholder="0"
             />
           </div>
 
           <div>
-            <label className="modal-label">Avatar / PFP Image URL</label>
+            <label className="modal-label">Avatar / Profile Picture URL</label>
             <input 
               type="url" 
-              className="url-text-input"
-              style={{
-                width: '100%',
-                background: '#131e36',
-                padding: '9px 12px',
-                borderRadius: '10px',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
-              }}
+              className="url-text-input modal-input-field"
               value={pfp}
               onChange={(e) => setPfp(e.target.value)}
+              placeholder="https://..."
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
             <input 
               type="checkbox"
-              id="verified-check"
+              id="edit-verified-check"
               checked={verified}
               onChange={(e) => setVerified(e.target.checked)}
               style={{ width: '18px', height: '18px', accentColor: '#1877f2', cursor: 'pointer' }}
             />
-            <label htmlFor="verified-check" style={{ fontSize: '0.84rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <label htmlFor="edit-verified-check" style={{ fontSize: '0.84rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <CheckCircle2 size={15} color="#1877f2" />
               <span>Verified Facebook Blue Badge</span>
             </label>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
             <button 
               type="button" 
               onClick={onClose}
-              style={{
-                flex: 1,
-                padding: '10px',
-                borderRadius: '12px',
-                background: '#1e293b',
-                color: '#94a3b8',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 600
-              }}
+              className="modal-cancel-btn"
             >
               Cancel
             </button>
@@ -257,7 +151,7 @@ export default function EditPageModal({ isOpen, onClose, page, onSave, initialFo
               style={{ flex: 1, justifyContent: 'center' }}
             >
               <Check size={16} />
-              <span>Save Changes</span>
+              <span>Save Accurate Metrics</span>
             </button>
           </div>
         </form>

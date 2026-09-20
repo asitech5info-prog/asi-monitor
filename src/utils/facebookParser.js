@@ -59,21 +59,16 @@ export function generateAvatarUrl(title) {
 }
 
 /**
- * Helper to parse followers string like "174,481,369 followers", "48.2M", "150K", "121,351,985 فالوورز"
+ * Helper to parse followers string into exact integer (e.g. "2,354", "2354", "2354 followers")
  */
 export function parseFollowerText(rawText) {
-  if (!rawText) return 0;
-  const clean = rawText.replace(/\s+/g, ' ').trim();
+  if (rawText === null || rawText === undefined) return 0;
+  if (typeof rawText === 'number') return Math.round(rawText);
+  const clean = String(rawText).replace(/\s+/g, ' ').trim();
+  if (!clean) return 0;
 
-  // Comma-separated integer: e.g. 174,481,368
-  const commaMatch = clean.match(/([\d,]+)/);
-  if (commaMatch && commaMatch[1].includes(',')) {
-    const num = parseInt(commaMatch[1].replace(/,/g, ''), 10);
-    if (!isNaN(num) && num > 0) return num;
-  }
-
-  // KMB shorthand: 48.2M, 150K
-  const kmbMatch = clean.match(/([\d.]+)\s*([KMBkmb])/i);
+  // KMB shorthand only when explicitly suffixed with K, M, or B: 48.2M, 150K
+  const kmbMatch = clean.match(/([\d.]+)\s*([KMBkmb])\b/);
   if (kmbMatch) {
     const val = parseFloat(kmbMatch[1]);
     const unit = kmbMatch[2].toUpperCase();
@@ -82,9 +77,17 @@ export function parseFollowerText(rawText) {
     if (unit === 'B') return Math.round(val * 1000000000);
   }
 
+  // Exact number with or without commas: e.g. "2,354" or "2354" or "2,354 followers"
+  const commaMatch = clean.match(/([\d,]+)/);
+  if (commaMatch) {
+    const num = parseInt(commaMatch[1].replace(/,/g, ''), 10);
+    if (!isNaN(num) && num >= 0) return num;
+  }
+
   const digitMatch = clean.match(/\d+/);
   return digitMatch ? parseInt(digitMatch[0], 10) : 0;
 }
+
 
 /**
  * Fetch 100% Live Facebook Page / Profile Data

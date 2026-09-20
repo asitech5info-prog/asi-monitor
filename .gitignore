@@ -30,3 +30,7 @@ android/.gradle/
 android/captures/
 *.apk
 *.aab
+
+# Scratch
+scratch/
+

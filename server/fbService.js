@@ -1,5 +1,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { scrapeFacebookWithPlaywright } from './playwrightScraper.js';
+
 
 /**
  * Format raw numbers into human-readable strings (e.g., 24500 -> '24.5K', 1200000 -> '1.2M')
@@ -102,7 +104,25 @@ export async function fetchFacebookPageData(targetUrl) {
   };
 
   try {
-    // Query Facebook's official public page embed endpoint which returns live public followers without login wall
+    // 1. First attempt accurate extraction with Playwright headless browser
+    const pwData = await scrapeFacebookWithPlaywright(cleanUrl);
+    if (pwData && pwData.followers > 0) {
+      return {
+        ...pageData,
+        title: pwData.title || pageData.title,
+        followers: pwData.followers,
+        pfp: pwData.pfp || pageData.pfp,
+        verified: pwData.verified !== undefined ? pwData.verified : pageData.verified,
+        source: 'playwright_live',
+        isLive: true
+      };
+    }
+  } catch (pwErr) {
+    console.warn(`[Playwright] Fallback to embed: ${pwErr.message}`);
+  }
+
+  try {
+    // 2. Query Facebook's official public page embed endpoint which returns live public followers
     const pluginUrl = `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent(cleanUrl)}&show_facepile=true`;
     const response = await axios.get(pluginUrl, {
       timeout: 8000,
