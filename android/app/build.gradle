@@ -33,9 +33,6 @@ android {
 repositories {
     google()
     mavenCentral()
-    flatDir{
-        dirs 'libs'
-    }
 }
 
 dependencies {
@@ -44,5 +41,4 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
-    implementation project(':capacitor-cordova-android-plugins')
 }
