@@ -11,13 +11,43 @@ import EditPageModal from './components/EditPageModal';
 import AddPageModal from './components/AddPageModal';
 import { fetchLiveFacebookData, extractPageNameFromUrl, parseFollowerText } from './utils/facebookParser';
 import { formatExactFollowers } from './utils/formatters';
-import { PlusCircle, RotateCcw } from 'lucide-react';
+import { PlusCircle, RotateCcw, CheckCircle2 } from 'lucide-react';
 
 const STORAGE_KEY = 'asi_monitor_pages_v4';
 const INITIALIZED_KEY = 'asi_monitor_init_done_v4';
+const SETTING_REFRESH_INTERVAL_KEY = 'asi_monitor_refresh_interval';
+const SETTING_LIVE_SIM_KEY = 'asi_monitor_live_sim';
+const SETTING_META_TOKEN_KEY = 'asi_monitor_meta_token';
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+// Checks each page and resets 24-hour delta growth if 24 hours have elapsed
+function applyGrowth24hReset(pagesList) {
+  const now = Date.now();
+  return pagesList.map(p => {
+    const resetTime = p.growthResetAt 
+      ? new Date(p.growthResetAt).getTime() 
+      : (p.lastUpdated ? new Date(p.lastUpdated).getTime() : now);
+    
+    // Check if 24 hours have elapsed
+    if (now - resetTime >= TWENTY_FOUR_HOURS_MS) {
+      return {
+        ...p,
+        growth: 0,
+        initialFollowers: p.followers,
+        growthResetAt: new Date(now).toISOString()
+      };
+    }
+    
+    return {
+      ...p,
+      growthResetAt: p.growthResetAt || (p.lastUpdated || new Date(now).toISOString()),
+      initialFollowers: p.initialFollowers ?? p.followers
+    };
+  });
+}
 
 export default function App() {
-  // Load initial pages from localStorage or default mockup pages
+  // Load initial pages from localStorage or default mockup pages with 24h reset checked
   const [pages, setPages] = useState(() => {
     try {
       const isInitialized = localStorage.getItem(INITIALIZED_KEY);
@@ -25,26 +55,55 @@ export default function App() {
       if (isInitialized && saved !== null) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(p => ({
+          const normalized = parsed.map(p => ({
             ...p,
             followers: typeof p.followers === 'number' ? p.followers : parseFollowerText(p.followers)
           }));
+          return applyGrowth24hReset(normalized);
         }
       }
       // First run: save defaults
       localStorage.setItem(INITIALIZED_KEY, 'true');
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PAGES));
-      return DEFAULT_PAGES;
+      const defaultsWithReset = applyGrowth24hReset(DEFAULT_PAGES);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultsWithReset));
+      return defaultsWithReset;
     } catch (e) {
       console.error('Error reading localStorage:', e);
-      return DEFAULT_PAGES;
+      return applyGrowth24hReset(DEFAULT_PAGES);
     }
   });
 
-  // Settings
-  const [refreshInterval, setRefreshInterval] = useState(10000); // 10 seconds polling heartbeat
-  const [isLiveSimActive, setIsLiveSimActive] = useState(false);
-  const [metaToken, setMetaToken] = useState('');
+  // Settings with persistent localStorage storage
+  const [refreshInterval, setRefreshInterval] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SETTING_REFRESH_INTERVAL_KEY);
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error('Error reading refresh interval:', e);
+    }
+    return 10000; // default 10 seconds polling heartbeat
+  });
+
+  const [isLiveSimActive, setIsLiveSimActive] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SETTING_LIVE_SIM_KEY);
+      if (saved !== null) return saved === 'true';
+    } catch (e) {
+      console.error('Error reading live sim state:', e);
+    }
+    return false;
+  });
+
+  const [metaToken, setMetaToken] = useState(() => {
+    try {
+      return localStorage.getItem(SETTING_META_TOKEN_KEY) || '';
+    } catch (e) {
+      return '';
+    }
+  });
   
   // UI states
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +112,20 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [editingPage, setEditingPage] = useState(null);
   const [pendingAddPage, setPendingAddPage] = useState(null);
+  
+  // Floating Toast Notification state
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
+
+  const showToast = (message = 'Refreshed', subtext = '') => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ id: Date.now(), message, subtext });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(null);
+    }, 2400);
+  };
   
   const [notifications, setNotifications] = useState([
     {
@@ -66,7 +139,7 @@ export default function App() {
 
   const scrollContainerRef = useRef(null);
 
-  // Save to localStorage on change
+  // Save pages to localStorage on change
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
@@ -74,6 +147,31 @@ export default function App() {
       console.error('Error saving pages:', e);
     }
   }, [pages]);
+
+  // Persist settings to localStorage on change
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTING_REFRESH_INTERVAL_KEY, refreshInterval.toString());
+    } catch (e) {
+      console.error('Error saving refresh interval:', e);
+    }
+  }, [refreshInterval]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTING_LIVE_SIM_KEY, isLiveSimActive ? 'true' : 'false');
+    } catch (e) {
+      console.error('Error saving live sim setting:', e);
+    }
+  }, [isLiveSimActive]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTING_META_TOKEN_KEY, metaToken);
+    } catch (e) {
+      console.error('Error saving meta token:', e);
+    }
+  }, [metaToken]);
 
   // Push new notification
   const addNotification = (title, message) => {
@@ -199,16 +297,22 @@ export default function App() {
   // Refresh single page live from Facebook
   const handleRefreshSingle = async (page) => {
     if (!page.url) return;
+    showToast('Refreshed', page.title);
+    const now = Date.now();
     try {
       const live = await fetchLiveFacebookData(page.url, metaToken);
       if (live && live.followers > 0) {
         setPages(prev => prev.map(p => {
           if (p.id === page.id) {
-            const base = p.initialFollowers || p.followers;
+            const resetTime = p.growthResetAt ? new Date(p.growthResetAt).getTime() : now;
+            const is24hOver = now - resetTime >= TWENTY_FOUR_HOURS_MS;
+            const base = is24hOver ? live.followers : (p.initialFollowers || live.followers);
             return {
               ...p,
               followers: live.followers,
-              growth: live.followers - base,
+              initialFollowers: base,
+              growth: is24hOver ? 0 : Math.max(0, live.followers - base),
+              growthResetAt: is24hOver ? new Date(now).toISOString() : (p.growthResetAt || new Date(now).toISOString()),
               title: live.title || p.title,
               pfp: live.pfp || p.pfp,
               verified: live.verified !== undefined ? live.verified : p.verified,
@@ -217,7 +321,7 @@ export default function App() {
           }
           return p;
         }));
-        addNotification(live.title, `Live update: ${formatExactFollowers(live.followers)} followers.`);
+        addNotification('Refreshed', `${live.title || page.title}: live followers updated.`);
         return;
       }
     } catch (e) {
@@ -225,23 +329,29 @@ export default function App() {
     }
 
     setPages(prev => prev.map(p => p.id === page.id ? { ...p, lastUpdated: new Date().toISOString() } : p));
-    addNotification(page.title, `Follower check complete.`);
+    addNotification('Refreshed', `${page.title} check completed.`);
   };
 
   // Force refresh all monitored pages live from Facebook
   const handleForceRefreshAll = async () => {
     setIsRefreshing(true);
+    showToast('Refreshed', 'All monitored pages updated');
+    const now = Date.now();
     try {
       const updated = await Promise.all(pages.map(async (page) => {
         if (!page.url) return page;
         try {
           const live = await fetchLiveFacebookData(page.url, metaToken);
           if (live && live.followers > 0) {
-            const base = page.initialFollowers || page.followers;
+            const resetTime = page.growthResetAt ? new Date(page.growthResetAt).getTime() : now;
+            const is24hOver = now - resetTime >= TWENTY_FOUR_HOURS_MS;
+            const base = is24hOver ? live.followers : (page.initialFollowers || live.followers);
             return {
               ...page,
               followers: live.followers,
-              growth: live.followers - base,
+              initialFollowers: base,
+              growth: is24hOver ? 0 : Math.max(0, live.followers - base),
+              growthResetAt: is24hOver ? new Date(now).toISOString() : (page.growthResetAt || new Date(now).toISOString()),
               title: live.title || page.title,
               pfp: live.pfp || page.pfp,
               verified: live.verified !== undefined ? live.verified : page.verified,
@@ -254,7 +364,7 @@ export default function App() {
         return { ...page, lastUpdated: new Date().toISOString() };
       }));
       setPages(updated);
-      addNotification('Real-Time Sync Complete', `All ${pages.length} pages updated live from Facebook.`);
+      addNotification('Refreshed', `All ${pages.length} pages updated live from Facebook.`);
     } catch (e) {
       console.warn('Sync all error:', e);
     } finally {
@@ -263,10 +373,38 @@ export default function App() {
   };
 
   // Real-Time Polling Engine: periodically queries Facebook live stats for all monitored pages
+  // and maintains the 24-hour growth reset boundary
   useEffect(() => {
-    if (refreshInterval === 0) return;
+    // Check 24-hour growth reset periodically
+    const check24hBoundary = () => {
+      setPages(prev => {
+        const now = Date.now();
+        let changed = false;
+        const checked = prev.map(p => {
+          const resetTime = p.growthResetAt ? new Date(p.growthResetAt).getTime() : now;
+          if (now - resetTime >= TWENTY_FOUR_HOURS_MS) {
+            changed = true;
+            return {
+              ...p,
+              growth: 0,
+              initialFollowers: p.followers,
+              growthResetAt: new Date(now).toISOString()
+            };
+          }
+          return p;
+        });
+        return changed ? checked : prev;
+      });
+    };
+
+    const resetIntervalTimer = setInterval(check24hBoundary, 30000);
+
+    if (refreshInterval === 0) {
+      return () => clearInterval(resetIntervalTimer);
+    }
 
     const tickTimer = setInterval(async () => {
+      const now = Date.now();
       setPages(prev => {
         if (prev.length === 0) return prev;
         prev.forEach(async (page) => {
@@ -276,11 +414,15 @@ export default function App() {
             if (live && live.followers > 0) {
               setPages(currentPages => currentPages.map(p => {
                 if (p.id === page.id && p.followers !== live.followers) {
-                  const base = p.initialFollowers || p.followers;
+                  const resetTime = p.growthResetAt ? new Date(p.growthResetAt).getTime() : now;
+                  const is24hOver = now - resetTime >= TWENTY_FOUR_HOURS_MS;
+                  const base = is24hOver ? live.followers : (p.initialFollowers || live.followers);
                   return {
                     ...p,
                     followers: live.followers,
-                    growth: live.followers - base,
+                    initialFollowers: base,
+                    growth: is24hOver ? 0 : Math.max(0, live.followers - base),
+                    growthResetAt: is24hOver ? new Date(now).toISOString() : (p.growthResetAt || new Date(now).toISOString()),
                     title: live.title || p.title,
                     pfp: live.pfp || p.pfp,
                     verified: live.verified !== undefined ? live.verified : p.verified,
@@ -298,29 +440,50 @@ export default function App() {
       });
     }, refreshInterval > 0 ? refreshInterval : 8000);
 
-    return () => clearInterval(tickTimer);
+    return () => {
+      clearInterval(tickTimer);
+      clearInterval(resetIntervalTimer);
+    };
   }, [refreshInterval, metaToken]);
 
   // Reset to default mockup pages
   const handleResetDefaults = () => {
-    setPages(DEFAULT_PAGES);
+    const defaultsWithReset = applyGrowth24hReset(DEFAULT_PAGES);
+    setPages(defaultsWithReset);
     try {
       localStorage.setItem(INITIALIZED_KEY, 'true');
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PAGES));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultsWithReset));
     } catch (e) {
       console.error('Error saving defaults:', e);
     }
-    addNotification('Reset', 'Restored default sample pages.');
+    showToast('Refreshed', 'Restored default sample pages');
+    addNotification('Refreshed', 'Restored default sample pages.');
   };
 
   // Save edited page
   const handleSaveEdit = (updatedPage) => {
-    setPages(prev => prev.map(p => p.id === updatedPage.id ? updatedPage : p));
+    setPages(prev => prev.map(p => p.id === updatedPage.id ? {
+      ...updatedPage,
+      growthResetAt: updatedPage.growthResetAt || new Date().toISOString()
+    } : p));
     addNotification(`Updated: ${updatedPage.title}`, `Accurate followers set to ${formatExactFollowers(updatedPage.followers)}.`);
   };
 
   return (
     <div className="app-viewport">
+      {/* On-Screen Toast Notification */}
+      {toast && (
+        <div className="toast-notification-banner" role="status" aria-live="polite">
+          <div className="toast-icon-wrap">
+            <CheckCircle2 size={15} color="#00e676" />
+          </div>
+          <div className="toast-content">
+            <span className="toast-title">{toast.message}</span>
+            {toast.subtext && <span className="toast-subtext">{toast.subtext}</span>}
+          </div>
+        </div>
+      )}
+
       {/* ASI Monitor Header */}
       <HeaderBar 
         onOpenSettings={() => setIsSettingsOpen(true)}

@@ -96,11 +96,12 @@ jobs:
           body: |
             ## 📱 ASI Monitor ${{ steps.vars.outputs.tag }} - Android APK Direct Download
 
-            ### 🚀 What's New:
+            ### 🚀 What's New in v1.1.0 (Fixed):
+            - **Settings Persistence**: Custom polling intervals (e.g. 5s, 10s) and options are saved in local storage and persist across app reloads.
+            - **24-Hour Growth Delta Reset**: Follower growth badges (`+100` etc.) now automatically reset every 24 hours to track daily deltas accurately.
+            - **Instant Refresh Notification**: Tapping the refresh button displays an immediate animated on-screen "Refreshed" toast notification.
             - **Accurate Followers**: Exact follower counts (e.g. `2,354`) formatted cleanly with commas, never rounded to `2.4K`.
             - **Mobile Viewport Optimization**: Zero horizontal clipping and full safe-area support for notches, punch-holes, and status bars.
-            - **Clean Follower Cards**: Removed cramped reel/view cards so the dashboard focuses 100% on live page followers.
-            - **Playwright Live Engine**: Headless browser scraper integration for accurate real-time metrics.
 
             ### 📥 Download & Install:
             - Download **`ASI-Monitor-${{ steps.vars.outputs.tag }}.apk`** (or `app-debug.apk`) below directly to your phone.
