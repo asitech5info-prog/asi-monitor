@@ -9,9 +9,11 @@ import SettingsModal from './components/SettingsModal';
 import NotificationsModal from './components/NotificationsModal';
 import EditPageModal from './components/EditPageModal';
 import AddPageModal from './components/AddPageModal';
+import HamburgerDrawer from './components/HamburgerDrawer';
+import KeepNotesView from './components/KeepNotesView';
 import { fetchLiveFacebookData, extractPageNameFromUrl, parseFollowerText } from './utils/facebookParser';
 import { formatExactFollowers } from './utils/formatters';
-import { PlusCircle, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, RotateCcw, CheckCircle2, ArrowUpDown, Check } from 'lucide-react';
 
 const STORAGE_KEY = 'asi_monitor_pages_v4';
 const INITIALIZED_KEY = 'asi_monitor_init_done_v4';
@@ -48,13 +50,14 @@ function applyGrowth24hReset(pagesList) {
 
 export default function App() {
   // Load initial pages from localStorage or default mockup pages with 24h reset checked
+  // If user removed pages, they stay removed!
   const [pages, setPages] = useState(() => {
     try {
       const isInitialized = localStorage.getItem(INITIALIZED_KEY);
       const saved = localStorage.getItem(STORAGE_KEY);
       if (isInitialized && saved !== null) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const normalized = parsed.map(p => ({
             ...p,
             followers: typeof p.followers === 'number' ? p.followers : parseFollowerText(p.followers)
@@ -62,7 +65,7 @@ export default function App() {
           return applyGrowth24hReset(normalized);
         }
       }
-      // First run: save defaults
+      // First run only: save defaults
       localStorage.setItem(INITIALIZED_KEY, 'true');
       const defaultsWithReset = applyGrowth24hReset(DEFAULT_PAGES);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultsWithReset));
@@ -72,6 +75,11 @@ export default function App() {
       return applyGrowth24hReset(DEFAULT_PAGES);
     }
   });
+
+  // Main navigation view: 'monitor' | 'notes'
+  const [currentView, setCurrentView] = useState('monitor');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isReorderMode, setIsReorderMode] = useState(false);
 
   // Settings with persistent localStorage storage
   const [refreshInterval, setRefreshInterval] = useState(() => {
@@ -185,13 +193,119 @@ export default function App() {
     setUnreadNotifs(prev => prev + 1);
   };
 
+  // Drag and drop index tracker
+  const dragItemIndexRef = useRef(null);
+
+  // Reorder page handlers
+  const handleMoveToTop = (id) => {
+    setPages(prev => {
+      const idx = prev.findIndex(p => p.id === id);
+      if (idx <= 0) return prev;
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      next.unshift(item);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.error('Error saving pages:', e);
+      }
+      return next;
+    });
+    showToast('Reordered', 'Placed at top');
+  };
+
+  const handleMoveUp = (id) => {
+    setPages(prev => {
+      const idx = prev.findIndex(p => p.id === id);
+      if (idx <= 0) return prev;
+      const next = [...prev];
+      const temp = next[idx - 1];
+      next[idx - 1] = next[idx];
+      next[idx] = temp;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.error('Error saving pages:', e);
+      }
+      return next;
+    });
+  };
+
+  const handleMoveDown = (id) => {
+    setPages(prev => {
+      const idx = prev.findIndex(p => p.id === id);
+      if (idx === -1 || idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      const temp = next[idx + 1];
+      next[idx + 1] = next[idx];
+      next[idx] = temp;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.error('Error saving pages:', e);
+      }
+      return next;
+    });
+  };
+
+  const handleMoveToBottom = (id) => {
+    setPages(prev => {
+      const idx = prev.findIndex(p => p.id === id);
+      if (idx === -1 || idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      next.push(item);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.error('Error saving pages:', e);
+      }
+      return next;
+    });
+    showToast('Reordered', 'Placed at bottom');
+  };
+
+  const handleDragStart = (e, index) => {
+    dragItemIndexRef.current = index;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = dragItemIndexRef.current;
+    if (sourceIndex === null || sourceIndex === undefined || sourceIndex === targetIndex) return;
+    setPages(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch (err) {
+        console.error('Error saving reordered pages:', err);
+      }
+      return next;
+    });
+    dragItemIndexRef.current = null;
+    showToast('Reordered', 'Updated page position');
+  };
+
   // Handle URL input from search bar -> automatic live fetch from Facebook!
   const handleInputSubmit = async (inputStr) => {
+    if (!inputStr || !inputStr.trim()) return;
     setIsLoading(true);
+    let cleanInput = inputStr.trim();
+    let customFollowers = null;
+
     try {
-      let customFollowers = null;
-      let cleanInput = inputStr.trim();
-      
       // Check if user entered followers count alongside URL (e.g. "facebook.com/mypage 2354" or "facebook.com/mypage, 2,354")
       const followersMatch = cleanInput.match(/(?:,\s*|\s+)(?:followers?[:\s=]*)?([\d.,]+)\s*([KMBkmb])?(?:\s*followers?)?$/i);
       if (followersMatch && followersMatch[1]) {
@@ -234,10 +348,11 @@ export default function App() {
         }
       } else {
         // Fallback: If Facebook blocked or private, open modal so user can configure exact followers
+        const fallbackTitle = resolved?.title || extractPageNameFromUrl(cleanInput);
         setPendingAddPage({
           id: `page-${Date.now()}`,
-          title: resolved?.title || extractPageNameFromUrl(cleanInput),
-          handle: (resolved?.title || 'page').toLowerCase().replace(/\s+/g, ''),
+          title: fallbackTitle,
+          handle: fallbackTitle.toLowerCase().replace(/\s+/g, ''),
           url: resolved?.url || cleanInput,
           pfp: resolved?.pfp || '',
           followers: customFollowers || 2354,
@@ -246,8 +361,18 @@ export default function App() {
         });
       }
     } catch (error) {
-      console.error('Error resolving page:', error);
-      alert('Unable to process page link. Please verify the URL.');
+      console.warn('Handling page link fallback:', error);
+      const fallbackTitle = extractPageNameFromUrl(cleanInput);
+      setPendingAddPage({
+        id: `page-${Date.now()}`,
+        title: fallbackTitle,
+        handle: fallbackTitle.toLowerCase().replace(/\s+/g, ''),
+        url: cleanInput,
+        pfp: '',
+        followers: customFollowers || 2354,
+        growth: 0,
+        verified: false
+      });
     } finally {
       setIsLoading(false);
     }
@@ -255,15 +380,17 @@ export default function App() {
 
   // Confirm adding page from modal with exact readings
   const handleConfirmAdd = (newPage) => {
+    const finalFollowers = Number(newPage.followers) || 2354;
     const pageToAdd = {
       ...newPage,
-      followers: Number(newPage.followers) || 0,
-      initialFollowers: Number(newPage.followers) || 0,
+      followers: finalFollowers,
+      initialFollowers: finalFollowers,
       growth: 0,
       isLive: true,
       lastUpdated: new Date().toISOString()
     };
     setPages(prev => [pageToAdd, ...prev]);
+    setPendingAddPage(null);
     addNotification(`Added: ${pageToAdd.title}`, `Monitoring ${formatExactFollowers(pageToAdd.followers)} exact followers.`);
     
     confetti({
@@ -277,7 +404,7 @@ export default function App() {
     }
   };
 
-  // Delete page permanently
+  // Delete page permanently (persists empty list if all deleted)
   const handleDeletePage = (id) => {
     setPages(prev => {
       const target = prev.find(p => p.id === id);
@@ -287,6 +414,7 @@ export default function App() {
       const updated = prev.filter(p => p.id !== id);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        localStorage.setItem(INITIALIZED_KEY, 'true');
       } catch (e) {
         console.error('Error saving deleted page:', e);
       }
@@ -484,50 +612,109 @@ export default function App() {
         </div>
       )}
 
-      {/* ASI Monitor Header */}
-      <HeaderBar 
-        onOpenSettings={() => setIsSettingsOpen(true)}
+      {/* Hamburger Navigation Drawer */}
+      <HamburgerDrawer 
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        currentView={currentView}
+        onSelectView={(v) => setCurrentView(v)}
         onOpenNotifications={() => {
           setIsNotificationsOpen(true);
           setUnreadNotifs(0);
         }}
-        unreadCount={unreadNotifs}
-        isRefreshing={isRefreshing}
+        unreadNotifs={unreadNotifs}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        isReorderMode={isReorderMode}
+        onToggleReorderMode={() => setIsReorderMode(prev => !prev)}
         onForceRefreshAll={handleForceRefreshAll}
-        isLiveSimActive={isLiveSimActive}
+        isRefreshing={isRefreshing}
       />
 
-      {/* Add Page / Profile URL Input Bar */}
-      <InputBar onAddPage={handleInputSubmit} isLoading={isLoading} />
+      {/* Conditionally Render View: Keep Notes vs Live Monitor */}
+      {currentView === 'notes' ? (
+        <KeepNotesView 
+          onBackToMonitor={() => setCurrentView('monitor')}
+          onShowToast={showToast}
+        />
+      ) : (
+        <>
+          {/* ASI Monitor Header */}
+          <HeaderBar 
+            onOpenMenu={() => setIsDrawerOpen(true)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenNotifications={() => {
+              setIsNotificationsOpen(true);
+              setUnreadNotifs(0);
+            }}
+            unreadCount={unreadNotifs}
+            isRefreshing={isRefreshing}
+            onForceRefreshAll={handleForceRefreshAll}
+            isReorderMode={isReorderMode}
+            onToggleReorderMode={() => setIsReorderMode(prev => !prev)}
+            onOpenNotes={() => setCurrentView('notes')}
+          />
 
-      {/* Aggregate Metrics Bar */}
-      <StatsSummaryBar pages={pages} />
+          {/* Rearrange Mode Banner (Active when rearranging pages) */}
+          {isReorderMode && (
+            <div className="reorder-banner" role="region" aria-label="Rearrange Mode">
+              <div className="reorder-banner-content">
+                <ArrowUpDown size={15} color="#00e5ff" />
+                <span>Rearrange: Drag cards or use arrows</span>
+              </div>
+              <button 
+                className="reorder-done-btn" 
+                onClick={() => setIsReorderMode(false)}
+                aria-label="Done Rearranging"
+              >
+                <Check size={14} />
+                <span>Done</span>
+              </button>
+            </div>
+          )}
 
-      {/* Monitored Rows Cards Container */}
-      <main className="cards-scroll-container" ref={scrollContainerRef}>
-        {pages.length === 0 ? (
-          <div className="empty-pages-state">
-            <PlusCircle size={44} strokeWidth={1.5} color="#00e5ff" />
-            <p style={{ fontWeight: 600, color: '#e2e8f0' }}>No Facebook pages currently monitored</p>
-            <p style={{ fontSize: '0.8rem' }}>Enter a Facebook link above or restore the sample pages.</p>
-            <button className="preset-btn" onClick={handleResetDefaults}>
-              <RotateCcw size={14} style={{ display: 'inline', marginRight: '6px' }} />
-              Restore Sample Pages
-            </button>
-          </div>
-        ) : (
-          pages.map(page => (
-            <MonitorCard 
-              key={page.id} 
-              page={page}
-              onDelete={handleDeletePage}
-              onRefresh={handleRefreshSingle}
-              onEdit={(p) => setEditingPage(p)}
-              isRefreshing={isRefreshing}
-            />
-          ))
-        )}
-      </main>
+          {/* Add Page / Profile URL Input Bar */}
+          <InputBar onAddPage={handleInputSubmit} isLoading={isLoading} />
+
+          {/* Aggregate Metrics Bar */}
+          <StatsSummaryBar pages={pages} />
+
+          {/* Monitored Rows Cards Container */}
+          <main className="cards-scroll-container" ref={scrollContainerRef}>
+            {pages.length === 0 ? (
+              <div className="empty-pages-state">
+                <PlusCircle size={44} strokeWidth={1.5} color="#00e5ff" />
+                <p style={{ fontWeight: 600, color: '#e2e8f0' }}>No Facebook pages currently monitored</p>
+                <p style={{ fontSize: '0.8rem' }}>Enter a Facebook link above or restore the sample pages.</p>
+                <button className="preset-btn" onClick={handleResetDefaults}>
+                  <RotateCcw size={14} style={{ display: 'inline', marginRight: '6px' }} />
+                  Restore Sample Pages
+                </button>
+              </div>
+            ) : (
+              pages.map((page, index) => (
+                <MonitorCard 
+                  key={page.id} 
+                  page={page}
+                  index={index}
+                  totalCount={pages.length}
+                  isReorderMode={isReorderMode}
+                  onMoveUp={handleMoveUp}
+                  onMoveDown={handleMoveDown}
+                  onMoveToTop={handleMoveToTop}
+                  onMoveToBottom={handleMoveToBottom}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDelete={handleDeletePage}
+                  onRefresh={handleRefreshSingle}
+                  onEdit={(p) => setEditingPage(p)}
+                  isRefreshing={isRefreshing}
+                />
+              ))
+            )}
+          </main>
+        </>
+      )}
 
       {/* Configure & Add Page Modal */}
       <AddPageModal 

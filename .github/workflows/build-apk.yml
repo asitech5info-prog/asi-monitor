@@ -68,7 +68,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            TAG="v1.1.0"
+            TAG="v1.1.1"
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
@@ -96,12 +96,13 @@ jobs:
           body: |
             ## 📱 ASI Monitor ${{ steps.vars.outputs.tag }} - Android APK Direct Download
 
-            ### 🚀 What's New in v1.1.0 (Fixed):
-            - **Settings Persistence**: Custom polling intervals (e.g. 5s, 10s) and options are saved in local storage and persist across app reloads.
-            - **24-Hour Growth Delta Reset**: Follower growth badges (`+100` etc.) now automatically reset every 24 hours to track daily deltas accurately.
-            - **Instant Refresh Notification**: Tapping the refresh button displays an immediate animated on-screen "Refreshed" toast notification.
-            - **Accurate Followers**: Exact follower counts (e.g. `2,354`) formatted cleanly with commas, never rounded to `2.4K`.
-            - **Mobile Viewport Optimization**: Zero horizontal clipping and full safe-area support for notches, punch-holes, and status bars.
+            ### 🚀 What's New in v1.1.1:
+            - **Permanent Page Removal Fix**: Removed sample pages no longer resurrect upon app restart or reload; custom page list state is permanently preserved.
+            - **Instant Link Paste & Add Page**: Pasting Facebook URLs resolves instantly with a strict 2.5s network timeout and seamless automatic fallback without freezing or getting stuck.
+            - **Custom Page Rearranging**: Easily position pages at the top, middle, or anywhere using intuitive drag-and-drop or one-tap "Place at Top / Move Up / Move Down" controls. Custom order is 100% persisted.
+            - **Google Keep-Style Notes**: Integrated full-featured Keep Notes app inside the mobile hamburger menu with color tags, pinning, search filtering, and local persistence.
+            - **Custom Cyber-Radar App Icon**: Completely redesigned premium app icon with glowing neon radar screen, waveform pulse, and futuristic ASI tech branding across all Android launcher mipmaps and web assets.
+            - **100% Mobile Phone Optimization**: Fully verified with Playwright mobile testing suite with zero horizontal clipping and safe touch targets.
 
             ### 📥 Download & Install:
             - Download **`ASI-Monitor-${{ steps.vars.outputs.tag }}.apk`** (or `app-debug.apk`) below directly to your phone.

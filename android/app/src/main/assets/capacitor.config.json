@@ -1,5 +1,5 @@
 {
-	"appId": "com.asitech.asimonitor",
-	"appName": "ASI Monitor",
-	"webDir": "dist"
+  "appId": "com.asitech.asimonitor",
+  "appName": "ASI Monitor",
+  "webDir": "dist"
 }

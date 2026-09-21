@@ -11,7 +11,7 @@ export function extractPageNameFromUrl(inputUrl) {
 
   try {
     if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-      if (clean.includes('facebook.com')) {
+      if (clean.includes('facebook.com') || clean.includes('fb.watch') || clean.includes('fb.me')) {
         clean = `https://${clean}`;
       } else {
         return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -19,6 +19,7 @@ export function extractPageNameFromUrl(inputUrl) {
     }
 
     const parsed = new URL(clean);
+    // Remove query params like mibextid, rdid, ref
     let pathname = parsed.pathname.replace(/^\/+|\/+$/g, '');
 
     if (parsed.searchParams.has('id')) {
@@ -28,12 +29,18 @@ export function extractPageNameFromUrl(inputUrl) {
     const parts = pathname.split('/').filter(Boolean);
     if (parts.length > 0) {
       let candidate = parts[parts.length - 1];
+      // If candidate is a numeric ID (e.g. /pages/name/12345 or /share/p/12345), pick the preceding part if available
       if (/^\d+$/.test(candidate) && parts.length > 1) {
         candidate = parts[parts.length - 2];
       }
+      // If candidate is 'p', 'v', 'reel', 'share', 'posts'
+      if (/^(p|v|reel|reels|share|posts|videos|watch)$/i.test(candidate) && parts.length > 2) {
+        candidate = parts[parts.length - 3] || parts[0];
+      }
+
       candidate = decodeURIComponent(candidate)
         .replace(/[-_.]/g, ' ')
-        .replace(/\b(pages|groups|profile|people)\b/gi, '')
+        .replace(/\b(pages|groups|profile|people|videos|reels?|share)\b/gi, '')
         .trim();
 
       if (candidate) {
@@ -46,7 +53,7 @@ export function extractPageNameFromUrl(inputUrl) {
     }
     return 'Facebook Page';
   } catch {
-    return clean.replace(/https?:\/\/(www\.)?facebook\.com\/?/i, '').replace(/[-_.]/g, ' ') || 'Facebook Page';
+    return clean.replace(/https?:\/\/(www\.)?(m\.)?facebook\.com\/?/i, '').replace(/[-_.]/g, ' ') || 'Facebook Page';
   }
 }
 
@@ -88,10 +95,21 @@ export function parseFollowerText(rawText) {
   return digitMatch ? parseInt(digitMatch[0], 10) : 0;
 }
 
+// Timeout wrapper helper to guarantee promises never hang
+function fetchWithTimeout(promise, ms = 2500) {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Network timeout')), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
 
 /**
  * Fetch 100% Live Facebook Page / Profile Data
  * Uses native Android CapacitorHttp on device (bypasses CORS), or backend API in web dev
+ * Strictly timed out to 2.5 seconds to prevent freezing the UI.
  */
 export async function fetchLiveFacebookData(inputUrl, metaToken = '') {
   let cleanUrl = inputUrl.trim();
@@ -100,15 +118,17 @@ export async function fetchLiveFacebookData(inputUrl, metaToken = '') {
   }
   cleanUrl = cleanUrl.replace('m.facebook.com', 'www.facebook.com');
 
+  const fallbackTitle = extractPageNameFromUrl(cleanUrl);
+
   // 1. If Meta Graph API Token is configured, query official Graph API
   if (metaToken && metaToken.trim().length > 10) {
     try {
       const handle = extractPageNameFromUrl(cleanUrl).toLowerCase().replace(/\s+/g, '');
       const graphUrl = `https://graph.facebook.com/v19.0/${handle}?fields=name,followers_count,fan_count,picture.type(large)&access_token=${metaToken.trim()}`;
-      const res = await axios.get(graphUrl, { timeout: 6000 });
-      if (res.data) {
+      const res = await fetchWithTimeout(axios.get(graphUrl, { timeout: 2500 }), 2500);
+      if (res?.data) {
         const followers = res.data.followers_count || res.data.fan_count || 0;
-        const title = res.data.name || extractPageNameFromUrl(cleanUrl);
+        const title = res.data.name || fallbackTitle;
         const pfp = res.data.picture?.data?.url || generateAvatarUrl(title);
         return {
           title,
@@ -132,46 +152,46 @@ export async function fetchLiveFacebookData(inputUrl, metaToken = '') {
   try {
     if (Capacitor.isNativePlatform()) {
       // Running on Android device: CapacitorHttp executes native Java HTTP with NO CORS restrictions!
-      const res = await CapacitorHttp.get({
+      const res = await fetchWithTimeout(CapacitorHttp.get({
         url: pluginUrl,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.9'
         }
-      });
-      html = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+      }), 2500);
+      html = typeof res?.data === 'string' ? res.data : JSON.stringify(res?.data || '');
     } else {
       // In browser/dev mode: query local backend endpoint
       try {
         const apiUrl = `/api/page-info?url=${encodeURIComponent(cleanUrl)}`;
-        const res = await axios.get(apiUrl, { timeout: 7000 });
-        if (res.data && res.data.followers > 0) {
+        const res = await fetchWithTimeout(axios.get(apiUrl, { timeout: 2000 }), 2200);
+        if (res?.data && res.data.followers > 0) {
           return {
-            title: res.data.title || extractPageNameFromUrl(cleanUrl),
+            title: res.data.title || fallbackTitle,
             followers: res.data.followers,
             views: res.data.views || 555000,
             pfp: res.data.pfp || generateAvatarUrl(res.data.title),
-            verified: res.data.verified,
+            verified: Boolean(res.data.verified),
             url: cleanUrl,
             isLive: true
           };
         }
       } catch {
         // Direct browser fallback
-        const res = await axios.get(pluginUrl, { timeout: 7000 });
-        html = res.data;
+        const res = await fetchWithTimeout(axios.get(pluginUrl, { timeout: 2000 }), 2200);
+        html = res?.data || '';
       }
     }
   } catch (err) {
-    console.warn('[Facebook Live Fetch Error]:', err.message);
+    console.warn('[Facebook Live Fetch Notice]:', err.message);
   }
 
-  if (html && html.length > 500) {
+  if (html && html.length > 300) {
     // 1. Page Title
     const titleMatch = html.match(/ref=embed_page["'][^>]*>([^<]+)<\/a>/i) ||
                        html.match(/<a[^>]*class=["'][^"']*_3-8w[^"']*["'][^>]*>([^<]+)<\/a>/i);
-    const title = titleMatch ? titleMatch[1].trim() : extractPageNameFromUrl(cleanUrl);
+    const title = titleMatch ? titleMatch[1].trim() : fallbackTitle;
 
     // 2. Exact Live Followers / Likes count
     const countMatch = html.match(/class=["']_1drq["'][^>]*>([^<]+)<\/div>/i) ||
@@ -198,8 +218,7 @@ export async function fetchLiveFacebookData(inputUrl, metaToken = '') {
     }
   }
 
-  // Fallback if page is private or blocked
-  const fallbackTitle = extractPageNameFromUrl(cleanUrl);
+  // Instant clean fallback
   return {
     title: fallbackTitle,
     followers: 0,

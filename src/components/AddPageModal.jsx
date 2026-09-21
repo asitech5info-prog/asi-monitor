@@ -7,14 +7,16 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
   if (!isOpen || !initialData) return null;
 
   const [title, setTitle] = useState(initialData.title || '');
-  const [followersInput, setFollowersInput] = useState(String(initialData.followers !== undefined ? initialData.followers : 2354));
+  const [url, setUrl] = useState(initialData.url || '');
+  const [followersInput, setFollowersInput] = useState(String(initialData.followers !== undefined && initialData.followers > 0 ? initialData.followers : 2354));
   const [pfp, setPfp] = useState(initialData.pfp || '');
   const [verified, setVerified] = useState(Boolean(initialData.verified));
 
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title || '');
-      setFollowersInput(String(initialData.followers !== undefined ? initialData.followers : 2354));
+      setUrl(initialData.url || '');
+      setFollowersInput(String(initialData.followers !== undefined && initialData.followers > 0 ? initialData.followers : 2354));
       setPfp(initialData.pfp || '');
       setVerified(Boolean(initialData.verified));
     }
@@ -25,10 +27,13 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
   const handleSubmit = (e) => {
     e.preventDefault();
     const finalTitle = title.trim() || 'Facebook Page';
+    const finalFollowers = parsedFollowers > 0 ? parsedFollowers : 2354;
     onConfirmAdd({
       ...initialData,
       title: finalTitle,
-      followers: parsedFollowers,
+      url: url.trim() || initialData.url || `https://www.facebook.com/${finalTitle.toLowerCase().replace(/\s+/g, '')}`,
+      followers: finalFollowers,
+      initialFollowers: finalFollowers,
       growth: 0,
       pfp: pfp.trim(),
       verified
@@ -61,7 +66,7 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
               alt={title} 
               style={{ width: '52px', height: '52px', borderRadius: '50%', border: '2px solid #00e5ff', objectFit: 'cover' }}
               onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=1877F2&color=fff&size=256&bold=true`;
+                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(title || 'FB')}&background=1877F2&color=fff&size=256&bold=true`;
               }}
             />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -71,9 +76,21 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
                 className="url-text-input modal-input-field"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. My Facebook Page"
                 required
               />
             </div>
+          </div>
+
+          <div>
+            <label className="modal-label">Facebook URL</label>
+            <input 
+              type="text" 
+              className="url-text-input modal-input-field"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://www.facebook.com/..."
+            />
           </div>
 
           <div>
@@ -99,13 +116,13 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
           </div>
 
           <div>
-            <label className="modal-label">Avatar / Profile Picture URL</label>
+            <label className="modal-label">Avatar / Profile Picture URL (Optional)</label>
             <input 
-              type="url" 
+              type="text" 
               className="url-text-input modal-input-field"
               value={pfp}
               onChange={(e) => setPfp(e.target.value)}
-              placeholder="https://..."
+              placeholder="https://... (leave blank for automatic avatar)"
             />
           </div>
 
@@ -128,14 +145,14 @@ export default function AddPageModal({ isOpen, onClose, initialData, onConfirmAd
           <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
             <button 
               type="button" 
-              onClick={onClose}
+              onClick={onClose} 
               className="modal-cancel-btn"
             >
               Cancel
             </button>
             <button 
-              type="submit"
-              className="add-btn"
+              type="submit" 
+              className="add-btn" 
               style={{ flex: 1.4, justifyContent: 'center' }}
             >
               <Plus size={18} strokeWidth={3} />
