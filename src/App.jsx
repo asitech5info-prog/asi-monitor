@@ -11,6 +11,7 @@ import EditPageModal from './components/EditPageModal';
 import AddPageModal from './components/AddPageModal';
 import HamburgerDrawer from './components/HamburgerDrawer';
 import KeepNotesView from './components/KeepNotesView';
+import AnalyticsView from './components/AnalyticsView';
 import { fetchLiveFacebookData, extractPageNameFromUrl, parseFollowerText } from './utils/facebookParser';
 import { formatExactFollowers } from './utils/formatters';
 import { PlusCircle, RotateCcw, CheckCircle2, ArrowUpDown, Check } from 'lucide-react';
@@ -630,9 +631,15 @@ export default function App() {
         isRefreshing={isRefreshing}
       />
 
-      {/* Conditionally Render View: Keep Notes vs Live Monitor */}
+      {/* Conditionally Render View: NOTES vs Analytics Graph vs Live Monitor */}
       {currentView === 'notes' ? (
         <KeepNotesView 
+          onBackToMonitor={() => setCurrentView('monitor')}
+          onShowToast={showToast}
+        />
+      ) : currentView === 'analytics' ? (
+        <AnalyticsView 
+          pages={pages}
           onBackToMonitor={() => setCurrentView('monitor')}
           onShowToast={showToast}
         />
@@ -641,7 +648,6 @@ export default function App() {
           {/* ASI Monitor Header */}
           <HeaderBar 
             onOpenMenu={() => setIsDrawerOpen(true)}
-            onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenNotifications={() => {
               setIsNotificationsOpen(true);
               setUnreadNotifs(0);
@@ -649,9 +655,6 @@ export default function App() {
             unreadCount={unreadNotifs}
             isRefreshing={isRefreshing}
             onForceRefreshAll={handleForceRefreshAll}
-            isReorderMode={isReorderMode}
-            onToggleReorderMode={() => setIsReorderMode(prev => !prev)}
-            onOpenNotes={() => setCurrentView('notes')}
           />
 
           {/* Rearrange Mode Banner (Active when rearranging pages) */}

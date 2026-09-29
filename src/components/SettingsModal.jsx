@@ -15,6 +15,7 @@ export default function SettingsModal({
   if (!isOpen) return null;
 
   const intervals = [
+    { label: '2s', value: 2000 },
     { label: '5s', value: 5000 },
     { label: '10s', value: 10000 },
     { label: '30s', value: 30000 },
@@ -31,6 +32,7 @@ export default function SettingsModal({
             className="icon-btn-round" 
             onClick={onClose} 
             style={{ width: '32px', height: '32px' }}
+            aria-label="Close settings"
           >
             <X size={16} />
           </button>
@@ -53,6 +55,13 @@ export default function SettingsModal({
               </button>
             ))}
           </div>
+          <span style={{ fontSize: '0.72rem', color: '#71717a', display: 'block', marginTop: '6px' }}>
+            {refreshInterval === 2000 
+              ? '⚡ Ultra-fast 2s real-time live heartbeat enabled'
+              : refreshInterval === 0 
+                ? 'Manual refresh only via header or card sync'
+                : `Heartbeat active every ${refreshInterval / 1000} seconds`}
+          </span>
         </div>
 
         {/* Live Growth Simulator */}
@@ -85,17 +94,18 @@ export default function SettingsModal({
             className="url-text-input"
             style={{ 
               width: '100%', 
-              background: '#131e36', 
+              background: '#0a0a0a', 
               padding: '10px 14px', 
               borderRadius: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              fontSize: '0.85rem'
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              fontSize: '0.85rem',
+              color: '#ffffff'
             }}
             placeholder="EAA..."
             value={metaToken}
             onChange={(e) => setMetaToken(e.target.value)}
           />
-          <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+          <span style={{ fontSize: '0.7rem', color: '#71717a', display: 'block', marginTop: '4px' }}>
             Enter your Page Access Token for official rate-limit-free Facebook Insights.
           </span>
         </div>

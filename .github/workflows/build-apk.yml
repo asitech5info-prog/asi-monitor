@@ -68,7 +68,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            TAG="v1.1.1"
+            TAG="v1.2.0"
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
@@ -92,17 +92,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
-          name: "ASI Monitor ${{ steps.vars.outputs.tag }} (Mobile Optimized APK)"
+          name: "ASI Monitor ${{ steps.vars.outputs.tag }} (Black AMOLED Edition APK)"
           body: |
             ## 📱 ASI Monitor ${{ steps.vars.outputs.tag }} - Android APK Direct Download
 
-            ### 🚀 What's New in v1.1.1:
-            - **Permanent Page Removal Fix**: Removed sample pages no longer resurrect upon app restart or reload; custom page list state is permanently preserved.
-            - **Instant Link Paste & Add Page**: Pasting Facebook URLs resolves instantly with a strict 2.5s network timeout and seamless automatic fallback without freezing or getting stuck.
-            - **Custom Page Rearranging**: Easily position pages at the top, middle, or anywhere using intuitive drag-and-drop or one-tap "Place at Top / Move Up / Move Down" controls. Custom order is 100% persisted.
-            - **Google Keep-Style Notes**: Integrated full-featured Keep Notes app inside the mobile hamburger menu with color tags, pinning, search filtering, and local persistence.
-            - **Custom Cyber-Radar App Icon**: Completely redesigned premium app icon with glowing neon radar screen, waveform pulse, and futuristic ASI tech branding across all Android launcher mipmaps and web assets.
-            - **100% Mobile Phone Optimization**: Fully verified with Playwright mobile testing suite with zero horizontal clipping and safe touch targets.
+            ### 🚀 What's New in v1.2.0:
+            - **Pure Black AMOLED Theme**: Engineered with inky true black backgrounds (#000000), battery-saving OLED contrast, and sleek neon cyan/emerald accents.
+            - **Streamlined Minimalist Header**: Removed header logo and cluttered buttons. Only the Live Refresh and Notifications buttons remain in the header; everything else is accessible via the hamburger drawer.
+            - **2-Second Real-Time Heartbeat**: Added ultra-fast 2-second polling refresh interval in settings for immediate follower updates.
+            - **Powerhouse NOTES App**: Renamed "Keep Notes" to "NOTES" (description removed). Added Category/Tag filtering, Interactive To-Do Checklists with completion progress bars, AMOLED color palettes, and JSON backup export/import.
+            - **Interactive Analytics Graph View**: Comprehensive analytics dashboard featuring an interactive SVG follower growth trajectory curve, audience share comparison chart, and performance leaderboard.
+            - **Mobile-First Android APK 1.2.0**: Validated with Playwright test suite for flawless mobile rendering and zero horizontal clipping.
 
             ### 📥 Download & Install:
             - Download **`ASI-Monitor-${{ steps.vars.outputs.tag }}.apk`** (or `app-debug.apk`) below directly to your phone.

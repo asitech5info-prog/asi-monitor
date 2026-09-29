@@ -9,7 +9,8 @@ import {
   RefreshCw, 
   Radio, 
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  BarChart3
 } from 'lucide-react';
 
 export default function HamburgerDrawer({
@@ -35,18 +36,10 @@ export default function HamburgerDrawer({
         role="dialog"
         aria-label="Navigation Menu"
       >
-        {/* Drawer Header with Brand Logo & App Name */}
+        {/* Drawer Header with App Name & Version */}
         <div className="drawer-header">
           <div className="drawer-brand-wrap">
             <div className="drawer-logo-icon">
-              <img 
-                src="/app-icon.png" 
-                alt="ASI Monitor" 
-                className="drawer-app-logo"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                }}
-              />
               <div className="drawer-logo-fallback">
                 <Activity size={22} color="#00e5ff" />
               </div>
@@ -54,7 +47,7 @@ export default function HamburgerDrawer({
             <div className="drawer-brand-text">
               <div className="drawer-title-row">
                 <span className="drawer-title">ASI Monitor</span>
-                <span className="version-pill">v1.1.1</span>
+                <span className="version-pill">v1.2.0</span>
               </div>
               <span className="drawer-subtitle">
                 <Radio size={10} color="#00e676" style={{ display: 'inline', marginRight: '4px' }} />
@@ -93,7 +86,7 @@ export default function HamburgerDrawer({
             <ChevronRight size={16} className="drawer-arrow" />
           </button>
 
-          {/* 2. Google Keep-Style Notes */}
+          {/* 2. NOTES (Renamed from Keep Notes, description removed as requested) */}
           <button 
             className={`drawer-nav-item ${currentView === 'notes' ? 'active' : ''}`}
             onClick={() => {
@@ -105,15 +98,32 @@ export default function HamburgerDrawer({
               <StickyNote size={18} />
             </div>
             <div className="drawer-nav-content">
-              <span className="drawer-nav-title">Keep Notes</span>
-              <span className="drawer-nav-desc">Google Keep-style page notes & tasks</span>
+              <span className="drawer-nav-title">NOTES</span>
+            </div>
+            <ChevronRight size={16} className="drawer-arrow" />
+          </button>
+
+          {/* 3. Analytics Graph */}
+          <button 
+            className={`drawer-nav-item ${currentView === 'analytics' ? 'active' : ''}`}
+            onClick={() => {
+              onSelectView('analytics');
+              onClose();
+            }}
+          >
+            <div className="drawer-nav-icon-wrap analytics-icon">
+              <BarChart3 size={18} />
+            </div>
+            <div className="drawer-nav-content">
+              <span className="drawer-nav-title">Analytics Graph</span>
+              <span className="drawer-nav-desc">Visual growth trends & page charts</span>
             </div>
             <ChevronRight size={16} className="drawer-arrow" />
           </button>
 
           <div className="drawer-section-label" style={{ marginTop: '14px' }}>MONITOR TOOLS</div>
 
-          {/* 3. Rearrange Pages */}
+          {/* 4. Rearrange Pages */}
           <button 
             className={`drawer-nav-item ${isReorderMode ? 'active' : ''}`}
             onClick={() => {
@@ -138,7 +148,7 @@ export default function HamburgerDrawer({
             </span>
           </button>
 
-          {/* 4. Sync All Live */}
+          {/* 5. Sync All Live */}
           <button 
             className="drawer-nav-item"
             onClick={() => {
@@ -155,7 +165,7 @@ export default function HamburgerDrawer({
             </div>
           </button>
 
-          {/* 5. Notifications / Activity */}
+          {/* 6. Notifications / Activity */}
           <button 
             className="drawer-nav-item"
             onClick={() => {
@@ -175,7 +185,7 @@ export default function HamburgerDrawer({
             )}
           </button>
 
-          {/* 6. Settings */}
+          {/* 7. Settings */}
           <button 
             className="drawer-nav-item"
             onClick={() => {
@@ -203,7 +213,7 @@ export default function HamburgerDrawer({
               <span className="footer-desc">Direct live fetching with zero third-party leakage</span>
             </div>
           </div>
-          <span className="drawer-copyright">ASI Monitor v1.1.1 • Android & Web</span>
+          <span className="drawer-copyright">ASI Monitor v1.2.0 • AMOLED Edition</span>
         </div>
       </div>
     </div>
